@@ -7,21 +7,20 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# ===== CONFIGURACIÓN =====
+# ========= Configuración general =========
 VERIFY_TOKEN = os.environ.get('VERIFICATION')
 WHATSAPP_TOKEN = os.environ.get('WHATSAPP_TOKEN')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 
-DB_HOST = os.environ.get('DB_HOST')
-DB_USER = os.environ.get('DB_USER')
+# ========= Datos de Railway =========
+DB_HOST = os.environ.get('DB_HOST') or 'mysql.railway.internal'
+DB_USER = os.environ.get('DB_USER') or 'root'
 DB_PASSWORD = os.environ.get('DB_PASSWORD')
-DB_NAME = os.environ.get('DB_NAME')
+DB_NAME = os.environ.get('DB_NAME') or 'railway'
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# =========================
-# CONEXIÓN A BASE DE DATOS
-# =========================
+# ========= Conexión a MySQL =========
 def get_db_connection():
     return mysql.connector.connect(
         host=DB_HOST,
@@ -30,29 +29,10 @@ def get_db_connection():
         database=DB_NAME
     )
 
-# =========================
-# IA
-# =========================
-def responder_con_ia(mensaje):
-    try:
-        completion = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "Eres un asistente útil que responde por WhatsApp."},
-                {"role": "user", "content": mensaje}
-            ]
-        )
-        return completion.choices[0].message.content.strip()
-    except Exception as e:
-        print("Error en OpenAI:", e)
-        return "Hubo un error al responder."
-
-# =========================
-# RUTAS FLASK
-# =========================
-@app.route('/', methods=['GET'])
+# ========= Rutas =========
+@app.route('/')
 def home():
-    return '✅ Plataforma WhatsApp IA corriendo correctamente.'
+    return '✅ Plataforma WhatsApp IA conectada a Railway correctamente.'
 
 @app.route('/webhook', methods=['GET'])
 def verificar_token():
@@ -76,7 +56,7 @@ def recibir_mensaje():
         guardar_conversacion(numero, texto_usuario, respuesta)
 
     except Exception as e:
-        print("Error al procesar el mensaje:", e)
+        print("Error al procesar mensaje:", e)
     return "OK", 200
 
 @app.route('/chats', methods=['GET'])
@@ -85,17 +65,29 @@ def ver_chats():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT * FROM conversaciones ORDER BY timestamp DESC")
-        rows = cursor.fetchall()
+        datos = cursor.fetchall()
         cursor.close()
         conn.close()
-        return jsonify(rows)
+        return jsonify(datos)
     except Exception as e:
         print("Error al consultar:", e)
         return jsonify([])
 
-# =========================
-# ENVÍO Y GUARDADO
-# =========================
+# ========= Utilidades =========
+def responder_con_ia(mensaje):
+    try:
+        completion = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "Eres un asistente útil que responde por WhatsApp."},
+                {"role": "user", "content": mensaje}
+            ]
+        )
+        return completion.choices[0].message.content.strip()
+    except Exception as e:
+        print("Error en OpenAI:", e)
+        return "Lo siento, hubo un error."
+
 def enviar_mensaje(numero, texto):
     url = "https://graph.facebook.com/v19.0/15556652659/messages"
     headers = {
@@ -115,6 +107,9 @@ def guardar_conversacion(numero, mensaje, respuesta):
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(
+            "CREATE TABLE IF NOT EXISTS conversaciones (id INT AUTO_INCREMENT PRIMARY KEY, numero VARCHAR(20), mensaje TEXT, respuesta TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)"
+        )
+        cursor.execute(
             "INSERT INTO conversaciones (numero, mensaje, respuesta) VALUES (%s, %s, %s)",
             (numero, mensaje, respuesta)
         )
@@ -122,11 +117,9 @@ def guardar_conversacion(numero, mensaje, respuesta):
         cursor.close()
         conn.close()
     except Exception as e:
-        print("Error al guardar conversación:", e)
+        print("Error al guardar:", e)
 
-# =========================
-# RUN FLASK (Render ready)
-# =========================
+# ========= Ejecutar (Render ready) =========
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
