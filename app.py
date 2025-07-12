@@ -1,132 +1,151 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, jsonify
 import requests
-import json
 import os
+import mysql.connector
 from openai import OpenAI
 from datetime import datetime
 
 app = Flask(__name__)
 
-# ===== CONFIGURACIÓN desde entorno =====
+# =======================
+# 🔧 CONFIGURACIÓN GENERAL
+# =======================
+
+# Tokens y claves desde Render
 VERIFY_TOKEN = os.environ.get('VERIFICATION')
 WHATSAPP_TOKEN = os.environ.get('WHATSAPP_TOKEN')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 
+# Datos de conexión MySQL desde Render
+DB_HOST = os.environ.get('DB_HOST')           # Ej: "localhost"
+DB_USER = os.environ.get('DB_USER')           # Ej: "root"
+DB_PASSWORD = os.environ.get('DB_PASSWORD')   # Ej: "admin"
+DB_NAME = os.environ.get('DB_NAME')           # Ej: "PlataformaIA_CIEA_DB"
+
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# Ruta al archivo de conversaciones (en Render usar /tmp/)
-CONVERSACIONES_FILE = "/tmp/conversaciones.json"
+# =======================
+# 🔌 CONEXIÓN A MYSQL
+# =======================
+def get_db_connection():
+    return mysql.connector.connect(
+        host=DB_HOST,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        database=DB_NAME
+    )
 
-@app.route('/')
-def home():
-    return "Plataforma IA CIEA activa en Render."
+# =======================
+# 🧠 FUNCIÓN IA
+# =======================
+def responder_con_ia(mensaje):
+    try:
+        completion = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "Eres un asistente útil que responde por WhatsApp."},
+                {"role": "user", "content": mensaje}
+            ]
+        )
+        return completion.choices[0].message.content.strip()
+    except Exception as e:
+        print("Error en OpenAI:", e)
+        return "Lo siento, hubo un error al generar la respuesta."
 
+# =======================
+# 📥 WEBHOOK VERIFICACIÓN
+# =======================
 @app.route('/webhook', methods=['GET'])
-def verificar_webhook():
-    if request.args.get("hub.mode") == "subscribe" and request.args.get("hub.verify_token") == VERIFY_TOKEN:
-        return request.args.get("hub.challenge"), 200
-    return "Verificación fallida", 403
+def verificar_token():
+    token = request.args.get('hub.verify_token')
+    challenge = request.args.get('hub.challenge')
+    if token == VERIFY_TOKEN:
+        return challenge
+    return "Token inválido", 403
 
+# =======================
+# 📤 RECEPCIÓN DE MENSAJES
+# =======================
 @app.route('/webhook', methods=['POST'])
 def recibir_mensaje():
     data = request.get_json()
-    print("Mensaje recibido:", json.dumps(data, indent=2))
     try:
         entry = data['entry'][0]
-        message = entry['changes'][0]['value']['messages'][0]
-        texto = message['text']['body']
-        numero = message['from']
+        changes = entry['changes'][0]
+        value = changes['value']
+        messages = value.get('messages')
 
-        # 1. Generar respuesta IA
-        respuesta = generar_respuesta_ia(texto)
+        if messages:
+            message = messages[0]
+            numero = message['from']
+            texto_usuario = message['text']['body']
 
-        # 2. Enviar a WhatsApp
-        enviar_respuesta_whatsapp(numero, respuesta)
+            respuesta = responder_con_ia(texto_usuario)
 
-        # 3. Guardar en historial
-        guardar_conversacion(numero, texto, respuesta)
+            enviar_mensaje(numero, respuesta)
+
+            # Guardar en MySQL
+            guardar_conversacion(numero, texto_usuario, respuesta)
 
     except Exception as e:
-        print("❌ Error procesando el mensaje:", e)
+        print("Error al procesar el mensaje:", e)
+
     return "OK", 200
 
-@app.route('/chats')
-def chats():
-    try:
-        if os.path.exists(CONVERSACIONES_FILE):
-            with open(CONVERSACIONES_FILE, "r", encoding="utf-8") as f:
-                datos = json.load(f)
-        else:
-            datos = []
-    except Exception as e:
-        datos = []
-        print("❌ Error al cargar chats:", e)
-
-    return render_template("chats.html", conversaciones=datos)
-
-def generar_respuesta_ia(mensaje_usuario):
-    try:
-        respuesta = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "Actúa como un experto ejecutivo de ventas de CIEA Design Solutions, especializado en diseño y fabricación de soluciones electrónicas, mecánicas y de software. Responde con profesionalismo, claridad y empatía."
-                },
-                {
-                    "role": "user",
-                    "content": mensaje_usuario
-                }
-            ]
-        )
-        return respuesta.choices[0].message.content.strip()
-    except Exception as e:
-        print("❌ Error al conectar con ChatGPT:", e)
-        return "Error al procesar tu mensaje con IA."
-
-def enviar_respuesta_whatsapp(numero, mensaje):
-    url = 'https://graph.facebook.com/v19.0/638096866063629/messages'
+# =======================
+# 💬 ENVIAR MENSAJE WHATSAPP
+# =======================
+def enviar_mensaje(numero, texto):
+    url = "https://graph.facebook.com/v19.0/15556652659/messages"
     headers = {
-        'Authorization': f'Bearer {WHATSAPP_TOKEN}',
-        'Content-Type': 'application/json'
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json"
     }
     payload = {
-        'messaging_product': 'whatsapp',
-        'to': numero,
-        'type': 'text',
-        'text': {'body': mensaje}
+        "messaging_product": "whatsapp",
+        "to": numero,
+        "type": "text",
+        "text": {
+            "body": texto
+        }
     }
-    try:
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()
-        print("✅ Mensaje enviado a WhatsApp:", numero)
-    except requests.exceptions.RequestException as e:
-        print("❌ Error al enviar mensaje a WhatsApp:", e)
+    response = requests.post(url, headers=headers, json=payload)
+    print("Respuesta WhatsApp:", response.text)
 
+# =======================
+# 💾 GUARDAR EN MYSQL
+# =======================
 def guardar_conversacion(numero, mensaje, respuesta):
-    conversacion = {
-        "numero": numero,
-        "mensaje": mensaje,
-        "respuesta": respuesta,
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    }
-
     try:
-        if os.path.exists(CONVERSACIONES_FILE):
-            with open(CONVERSACIONES_FILE, "r", encoding="utf-8") as f:
-                datos = json.load(f)
-        else:
-            datos = []
-
-        datos.append(conversacion)
-
-        with open(CONVERSACIONES_FILE, "w", encoding="utf-8") as f:
-            json.dump(datos, f, indent=2, ensure_ascii=False)
-
-        print("💾 Conversación guardada.")
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        query = "INSERT INTO conversaciones (numero, mensaje, respuesta) VALUES (%s, %s, %s)"
+        cursor.execute(query, (numero, mensaje, respuesta))
+        conn.commit()
+        cursor.close()
+        conn.close()
     except Exception as e:
-        print("❌ Error al guardar la conversación:", e)
+        print("Error al guardar en MySQL:", e)
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+# =======================
+# 📄 VER CONVERSACIONES
+# =======================
+@app.route('/chats', methods=['GET'])
+def ver_chats():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM conversaciones ORDER BY timestamp DESC")
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify(rows)
+    except Exception as e:
+        print("Error al consultar conversaciones:", e)
+        return jsonify([])
+
+# =======================
+# 🚀 MAIN
+# =======================
+if __name__ == '__main__':
+    app.run(port=5000, debug=True)
