@@ -1,0 +1,22 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Chats - IA WhatsApp</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Conversaciones</h2>
+        <ul>
+            {% for chat in chats %}
+            <li><a href="{{ url_for('chat', telefono=chat[1]) }}">{{ chat[2] or chat[1] }}</a></li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="content">
+        <h1>Selecciona una conversación</h1>
+    </div>
+</body>
+</html>
