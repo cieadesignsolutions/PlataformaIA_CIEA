@@ -7,26 +7,21 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# =======================
-# 🔧 CONFIGURACIÓN GENERAL
-# =======================
-
-# Tokens y claves desde Render
+# ===== CONFIGURACIÓN =====
 VERIFY_TOKEN = os.environ.get('VERIFICATION')
 WHATSAPP_TOKEN = os.environ.get('WHATSAPP_TOKEN')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 
-# Datos de conexión MySQL desde Render
-DB_HOST = os.environ.get('DB_HOST')           # Ej: "localhost"
-DB_USER = os.environ.get('DB_USER')           # Ej: "root"
-DB_PASSWORD = os.environ.get('DB_PASSWORD')   # Ej: "admin"
-DB_NAME = os.environ.get('DB_NAME')           # Ej: "PlataformaIA_CIEA_DB"
+DB_HOST = os.environ.get('DB_HOST')
+DB_USER = os.environ.get('DB_USER')
+DB_PASSWORD = os.environ.get('DB_PASSWORD')
+DB_NAME = os.environ.get('DB_NAME')
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# =======================
-# 🔌 CONEXIÓN A MYSQL
-# =======================
+# =========================
+# CONEXIÓN A BASE DE DATOS
+# =========================
 def get_db_connection():
     return mysql.connector.connect(
         host=DB_HOST,
@@ -35,9 +30,9 @@ def get_db_connection():
         database=DB_NAME
     )
 
-# =======================
-# 🧠 FUNCIÓN IA
-# =======================
+# =========================
+# IA
+# =========================
 def responder_con_ia(mensaje):
     try:
         completion = client.chat.completions.create(
@@ -50,11 +45,15 @@ def responder_con_ia(mensaje):
         return completion.choices[0].message.content.strip()
     except Exception as e:
         print("Error en OpenAI:", e)
-        return "Lo siento, hubo un error al generar la respuesta."
+        return "Hubo un error al responder."
 
-# =======================
-# 📥 WEBHOOK VERIFICACIÓN
-# =======================
+# =========================
+# RUTAS FLASK
+# =========================
+@app.route('/', methods=['GET'])
+def home():
+    return '✅ Plataforma WhatsApp IA corriendo correctamente.'
+
 @app.route('/webhook', methods=['GET'])
 def verificar_token():
     token = request.args.get('hub.verify_token')
@@ -63,73 +62,23 @@ def verificar_token():
         return challenge
     return "Token inválido", 403
 
-# =======================
-# 📤 RECEPCIÓN DE MENSAJES
-# =======================
 @app.route('/webhook', methods=['POST'])
 def recibir_mensaje():
     data = request.get_json()
     try:
         entry = data['entry'][0]
-        changes = entry['changes'][0]
-        value = changes['value']
-        messages = value.get('messages')
+        message = entry['changes'][0]['value']['messages'][0]
+        numero = message['from']
+        texto_usuario = message['text']['body']
 
-        if messages:
-            message = messages[0]
-            numero = message['from']
-            texto_usuario = message['text']['body']
-
-            respuesta = responder_con_ia(texto_usuario)
-
-            enviar_mensaje(numero, respuesta)
-
-            # Guardar en MySQL
-            guardar_conversacion(numero, texto_usuario, respuesta)
+        respuesta = responder_con_ia(texto_usuario)
+        enviar_mensaje(numero, respuesta)
+        guardar_conversacion(numero, texto_usuario, respuesta)
 
     except Exception as e:
         print("Error al procesar el mensaje:", e)
-
     return "OK", 200
 
-# =======================
-# 💬 ENVIAR MENSAJE WHATSAPP
-# =======================
-def enviar_mensaje(numero, texto):
-    url = "https://graph.facebook.com/v19.0/15556652659/messages"
-    headers = {
-        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "messaging_product": "whatsapp",
-        "to": numero,
-        "type": "text",
-        "text": {
-            "body": texto
-        }
-    }
-    response = requests.post(url, headers=headers, json=payload)
-    print("Respuesta WhatsApp:", response.text)
-
-# =======================
-# 💾 GUARDAR EN MYSQL
-# =======================
-def guardar_conversacion(numero, mensaje, respuesta):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        query = "INSERT INTO conversaciones (numero, mensaje, respuesta) VALUES (%s, %s, %s)"
-        cursor.execute(query, (numero, mensaje, respuesta))
-        conn.commit()
-        cursor.close()
-        conn.close()
-    except Exception as e:
-        print("Error al guardar en MySQL:", e)
-
-# =======================
-# 📄 VER CONVERSACIONES
-# =======================
 @app.route('/chats', methods=['GET'])
 def ver_chats():
     try:
@@ -141,12 +90,43 @@ def ver_chats():
         conn.close()
         return jsonify(rows)
     except Exception as e:
-        print("Error al consultar conversaciones:", e)
+        print("Error al consultar:", e)
         return jsonify([])
 
-# =======================
-# 🚀 MAIN
-# =======================
+# =========================
+# ENVÍO Y GUARDADO
+# =========================
+def enviar_mensaje(numero, texto):
+    url = "https://graph.facebook.com/v19.0/15556652659/messages"
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": numero,
+        "type": "text",
+        "text": {"body": texto}
+    }
+    requests.post(url, headers=headers, json=payload)
+
+def guardar_conversacion(numero, mensaje, respuesta):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO conversaciones (numero, mensaje, respuesta) VALUES (%s, %s, %s)",
+            (numero, mensaje, respuesta)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print("Error al guardar conversación:", e)
+
+# =========================
+# RUN FLASK (Render ready)
+# =========================
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
