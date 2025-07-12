@@ -39,24 +39,35 @@ def verificar_token():
     token = request.args.get('hub.verify_token')
     challenge = request.args.get('hub.challenge')
     if token == VERIFY_TOKEN:
+        print("🔐 Verificación exitosa")
         return challenge
+    print("🚫 Token de verificación inválido")
     return "Token inválido", 403
 
 @app.route('/webhook', methods=['POST'])
 def recibir_mensaje():
     data = request.get_json()
+    print("📥 Datos recibidos:", data)
     try:
         entry = data['entry'][0]
         message = entry['changes'][0]['value']['messages'][0]
         numero = message['from']
         texto_usuario = message['text']['body']
 
+        print(f"🟢 Mensaje de {numero}: {texto_usuario}")
+
         respuesta = responder_con_ia(texto_usuario)
+        print(f"🤖 Respuesta generada: {respuesta}")
+
         enviar_mensaje(numero, respuesta)
+        print("📤 Mensaje enviado")
+
         guardar_conversacion(numero, texto_usuario, respuesta)
+        print("💾 Conversación guardada en MySQL")
 
     except Exception as e:
-        print("Error al procesar mensaje:", e)
+        print("❌ ERROR al procesar webhook:", e)
+
     return "OK", 200
 
 @app.route('/chats', methods=['GET'])
@@ -70,7 +81,7 @@ def ver_chats():
         conn.close()
         return jsonify(datos)
     except Exception as e:
-        print("Error al consultar:", e)
+        print("❌ ERROR al consultar chats:", e)
         return jsonify([])
 
 # ========= Utilidades =========
@@ -85,7 +96,7 @@ def responder_con_ia(mensaje):
         )
         return completion.choices[0].message.content.strip()
     except Exception as e:
-        print("Error en OpenAI:", e)
+        print("❌ ERROR en OpenAI:", e)
         return "Lo siento, hubo un error."
 
 def enviar_mensaje(numero, texto):
@@ -100,7 +111,11 @@ def enviar_mensaje(numero, texto):
         "type": "text",
         "text": {"body": texto}
     }
-    requests.post(url, headers=headers, json=payload)
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        print("📨 Respuesta de WhatsApp API:", response.status_code, response.text)
+    except Exception as e:
+        print("❌ ERROR al enviar mensaje a WhatsApp:", e)
 
 def guardar_conversacion(numero, mensaje, respuesta):
     try:
@@ -117,7 +132,7 @@ def guardar_conversacion(numero, mensaje, respuesta):
         cursor.close()
         conn.close()
     except Exception as e:
-        print("Error al guardar:", e)
+        print("❌ ERROR al guardar conversación en MySQL:", e)
 
 # ========= Ejecutar (Render ready) =========
 if __name__ == '__main__':
