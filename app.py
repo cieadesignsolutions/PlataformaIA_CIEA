@@ -100,7 +100,7 @@ def responder_con_ia(mensaje):
         return "Lo siento, hubo un error."
 
 def enviar_mensaje(numero, texto):
-    url = "https://graph.facebook.com/v19.0/15556652659/messages"
+    url = "https://graph.facebook.com/v19.0/638096866063629/messages"
     headers = {
         "Authorization": f"Bearer {WHATSAPP_TOKEN}",
         "Content-Type": "application/json"
