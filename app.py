@@ -7,7 +7,6 @@ from datetime import datetime
 from dotenv import load_dotenv
 load_dotenv()
 
-
 app = Flask(__name__)
 
 # ========= Configuración general =========
@@ -16,7 +15,7 @@ WHATSAPP_TOKEN = os.environ.get('WHATSAPP_TOKEN')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 
 # ========= Datos de Railway =========
-DB_HOST = os.environ.get('DB_HOST') or 'mysql.railway.internal'
+DB_HOST = os.environ.get('DB_HOST') or 'interchange.proxy.rlwy.net'
 DB_USER = os.environ.get('DB_USER') or 'root'
 DB_PASSWORD = os.environ.get('DB_PASSWORD')
 DB_NAME = os.environ.get('DB_NAME') or 'railway'
@@ -51,11 +50,24 @@ def verificar_token():
 def recibir_mensaje():
     data = request.get_json()
     print("📥 Datos recibidos:", data)
+
     try:
         entry = data['entry'][0]
-        message = entry['changes'][0]['value']['messages'][0]
+        changes = entry['changes'][0]['value']
+
+        # Verificamos que haya mensajes
+        if 'messages' not in changes:
+            print("⚠️ No hay mensajes nuevos.")
+            return "No hay mensajes", 200
+
+        message = changes['messages'][0]
         numero = message['from']
         texto_usuario = message['text']['body']
+
+        # 🔁 Evitar loop infinito (si el bot se responde a sí mismo)
+        if numero == '15556652659':  # número de prueba del bot
+            print("🔁 Mensaje del bot mismo, ignorado.")
+            return "Ignorado", 200
 
         print(f"🟢 Mensaje de {numero}: {texto_usuario}")
 
