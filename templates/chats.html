@@ -1,46 +1,40 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>Chats IA WhatsApp</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-</head>
-<body>
-  <div class="sidebar">
+{% extends 'base.html' %}
+{% block content %}
+  <div class="header">
     <h2>Conversaciones</h2>
-    <ul>
-      {% for c in chats %}
-      <li class="{{ 'active' if selected==c.numero else '' }}">
-        <a href="{{ url_for('ver_chat', telefono=c.numero) }}">
-          {{ c.numero }}
-          <small>{{ c.ultima.strftime('%Y-%m-%d %H:%M') }}</small>
-        </a>
-      </li>
-      {% endfor %}
-    </ul>
     <form method="POST" action="{{ url_for('toggle_ai') }}">
-      <button type="submit" class="btn-ia {{ 'on' if ia_on else 'off' }}">
+      <button class="toggle-btn {{ 'on' if ia_on else 'off' }}">
         IA {{ 'ON' if ia_on else 'OFF' }}
       </button>
     </form>
   </div>
-  <div class="content">
-    {% if mensajes %}
-      <h2>Chat con {{ selected }}</h2>
-      <div class="messages">
-        {% for m in mensajes %}
-        <div class="msg-box">
-          <p>{{ m.mensaje }}</p>
-          {% if m.respuesta %}
-          <p class="resp">{{ m.respuesta }}</p>
-          {% endif %}
-          <small>{{ m.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</small>
-        </div>
+  <div class="container">
+    <aside class="chat-list">
+      <ul>
+        {% for c in chats %}
+          <li class="{{ 'active' if selected==c['numero'] else '' }}">
+            <a href="{{ url_for('ver_chat', numero=c['numero']) }}">
+              {{ c['numero'] }}
+            </a>
+          </li>
         {% endfor %}
-      </div>
-    {% else %}
-      <h2>Selecciona un chat</h2>
-    {% endif %}
+      </ul>
+    </aside>
+    <section class="messages">
+      {% if mensajes %}
+        {% for m in mensajes %}
+          <div class="msg-box">
+            <p>{{ m['mensaje'] or m['respuesta'] }}</p>
+            <span class="ts">{{ m['timestamp'] }}</span>
+          </div>
+        {% endfor %}
+        <form class="reply-form" method="POST" action="/send-manual">
+          <input type="text" name="texto" placeholder="Escribe tu mensaje...">
+          <button type="submit">⏎</button>
+        </form>
+      {% else %}
+        <p>Selecciona un chat para ver el historial.</p>
+      {% endif %}
+    </section>
   </div>
-</body>
-</html>
+{% endblock %}
