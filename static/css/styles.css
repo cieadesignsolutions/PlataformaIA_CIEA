@@ -121,7 +121,7 @@ body {
   min-width: 20%;
   max-width: 80%;
   word-wrap: break-word;
-  white-space: pre-wrap;
+  white-space: normal;
 }
 
 /* Usuario: azul izquierda */
