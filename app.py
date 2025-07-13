@@ -78,7 +78,7 @@ def recibir_mensaje():
 def ver_panel_chats():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT DISTINCT numero FROM conversaciones ORDER BY timestamp DESC")
+    cursor.execute("SELECT numero, MAX(timestamp) as ultima_fecha FROM conversaciones GROUP BY numero ORDER BY ultima_fecha DESC")
     chats = cursor.fetchall()
     cursor.close()
     conn.close()
