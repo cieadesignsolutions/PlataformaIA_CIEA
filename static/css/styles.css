@@ -243,3 +243,10 @@ body {
   width: 100%;
   font-size: 0.95em;
 }
+.sidebar-nav {
+  position: sticky;
+  top: 0;
+  height: 100vh;                      /* ocupa toda la altura de la ventana */
+  overflow-y: auto;
+}
+
