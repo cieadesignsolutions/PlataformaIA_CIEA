@@ -1,10 +1,12 @@
+{# templates/chats.html #}
 {% extends 'base.html' %}
 {% block content %}
   <div class="header">
     <h2>Conversaciones</h2>
   </div>
   <div class="container">
-    <!-- Sidebar izquierdo: lista de chats -->
+
+    <!-- SIDEBAR IZQUIERDO: lista de chats -->
     <aside class="chat-list">
       <ul>
         {% for c in chats %}
@@ -15,17 +17,19 @@
       </ul>
     </aside>
 
-    <!-- Centro: mensajes -->
+    <!-- SECCIÓN CENTRAL: mensajes  -->
     <section class="messages">
       {% if mensajes is not none %}
         <div class="chat-header">
           <span>Chat con {{ selected }}</span>
           <form method="POST" action="{{ url_for('toggle_ai', numero=selected) }}">
-            <button type="submit" class="toggle-btn {{ 'on' if IA_ESTADOS[selected] else 'off' }}">
+            <button type="submit"
+                    class="toggle-btn {{ 'on' if IA_ESTADOS[selected] else 'off' }}">
               IA {{ 'ON' if IA_ESTADOS[selected] else 'OFF' }}
             </button>
           </form>
         </div>
+
         <div class="msgs-wrap" id="msgs-wrap">
           {% for m in mensajes %}
             <div class="msg-box msg-user">
@@ -33,55 +37,53 @@
               <span class="ts">{{ m['timestamp'] }}</span>
             </div>
             {% if m['respuesta'] %}
-            <div class="msg-box msg-ai">
-              <p>{{ m['respuesta'] }}</p>
-              <span class="ts">{{ m['timestamp'] }}</span>
-            </div>
+              <div class="msg-box msg-ai">
+                <p>{{ m['respuesta'] }}</p>
+                <span class="ts">{{ m['timestamp'] }}</span>
+              </div>
             {% endif %}
           {% endfor %}
         </div>
 
-        <form class="reply-form" method="POST" action="/send-manual">
+        <form class="reply-form" method="POST" action="{{ url_for('enviar_manual') }}">
           <div class="input-group">
             <button type="button" class="emoji-btn" title="Emojis">😀</button>
-            <input
-              type="text"
-              name="texto"
-              class="reply-input-line"
-              placeholder="Escribe un mensaje…"
-            >
+            <input type="text" name="texto" class="reply-input-line" placeholder="Escribe un mensaje…">
             <button type="submit" class="send-btn">Enviar ahora</button>
           </div>
         </form>
+
       {% else %}
         <p class="no-chat">Selecciona un chat para ver el historial.</p>
       {% endif %}
     </section>
 
-    <!-- NUEVO: Sidebar derecho -->
-    <aside class="sidebar-right">
-      <!-- Aquí puedes poner botones de eliminar chat, info, toggles, etcc. -->
-      <form method="POST" action="{{ url_for('eliminar_chat', numero=selected) }}">
-        <button type="submit" class="delete-btn">🗑️ Eliminar Chat</button>
-      </form>
-      <form method="POST" action="{{ url_for('toggle_ai', numero=selected) }}">
-        <button type="submit" class="toggle-btn {{ 'on' if IA_ESTADOS[selected] else 'off' }}">
-          IA {{ 'ON' if IA_ESTADOS[selected] else 'OFF' }}
-        </button>
-      </form>
-    </aside>
+    {# SIDEBAR DERECHO: sólo si hay un chat seleccionado #}
+    {% if mensajes is not none %}
+      <aside class="sidebar-right">
+        <form method="POST" action="{{ url_for('eliminar_chat', numero=selected) }}">
+          <button type="submit" class="delete-btn">🗑️ Eliminar Chat</button>
+        </form>
+        <form method="POST" action="{{ url_for('toggle_ai', numero=selected) }}">
+          <button type="submit" class="toggle-btn {{ 'on' if IA_ESTADOS[selected] else 'off' }}">
+            IA {{ 'ON' if IA_ESTADOS[selected] else 'OFF' }}
+          </button>
+        </form>
+      </aside>
+    {% endif %}
+
   </div>
 
   <!-- Emoji Button library -->
   <script src="https://unpkg.com/@joeattardi/emoji-button@4.6.2/dist/index.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
+      // Emoji picker
       const button = document.querySelector('.emoji-btn');
-      const input   = document.querySelector('.reply-input-line');
-      const picker  = new EmojiButton({ position: 'top-start', zIndex: 1000 });
+      const input  = document.querySelector('.reply-input-line');
+      const picker = new EmojiButton({ position: 'top-start', zIndex: 1000 });
       picker.on('emoji', emoji => {
-        input.value += emoji;
-        input.focus();
+        input.value += emoji; input.focus();
       });
       button.addEventListener('click', () => picker.togglePicker(button));
 
