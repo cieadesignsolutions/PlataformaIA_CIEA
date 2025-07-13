@@ -1,46 +1,158 @@
-/* Asegúrate de que el html y el body llenen todo el alto */
-html, body {
-  height: 100%;
+/* ========== chats.css (VERSION RESTAURADA + INPUT FIJO) ========== */
+
+/* layout general */
+body {
   margin: 0;
+  font-family: Arial, sans-serif;
+  display: flex;
+  height: 100vh;
+}
+.sidebar {
+  width: 200px;
+  background: #111;
+  color: #fff;
+  padding: 20px;
+}
+.sidebar h1 {
+  font-size: 1.5em;
+  margin-bottom: 1em;
+}
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+.sidebar li {
+  margin: 1em 0;
+}
+.sidebar a {
+  color: #ccc;
+  text-decoration: none;
+}
+.sidebar a:hover {
+  color: #fff;
 }
 
-/* Tu contenedor principal ya tiene display:flex; flex-direction:column; */
-/* Solo comprueba que .container y .messages también hereden el 100% de altura */
-.container, .messages {
-  height: 100%;
+/* container secundario */
+.container {
+  display: flex;
+  flex: 1;
 }
 
-/* Mensajes repartidos hacia el final */
-.msgs-wrap {
+/* lista de chats como submenú */
+.chat-list {
+  width: 200px;
+  background: #fafafa;
+  border-right: 1px solid #ddd;
+  overflow-y: auto;
+}
+.chat-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.chat-list li {
+  padding: 10px;
+}
+.chat-list li.active {
+  background: #e0e0e0;
+}
+.chat-list a {
+  text-decoration: none;
+  color: #333;
+}
+
+/* sección de mensajes */
+.messages {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;      /* empuja los mensajes hacia abajo */
+}
+
+/* cabecera interna del chat */
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background: #fff;
+  border-bottom: 1px solid #ddd;
+}
+
+/* botón toggle IA */
+.toggle-btn {
+  border: none;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.toggle-btn.on {
+  background: green;
+  color: #fff;
+}
+.toggle-btn.off {
+  background: red;
+  color: #fff;
+}
+
+/* contenedor de mensajes con scroll interno */
+.msgs-wrap {
+  flex: 1;
   overflow-y: auto;
-  scroll-behavior: smooth;        /* opcional: scroll animado */
   padding: 10px;
   background: #f9f9f9;
 }
 
-/* Formulario siempre visible al fondo */
+/* cada burbuja de mensaje */
+.msg-box {
+  background: #eee;
+  margin-bottom: 10px;
+  padding: 10px;
+  border-radius: 4px;
+  position: relative;
+}
+
+/* timestamp */
+.msg-box .ts {
+  font-size: 0.8em;
+  color: #666;
+  position: absolute;
+  bottom: 4px;
+  right: 8px;
+}
+
+/* formulario de respuesta (submenú fijo) */
 .reply-form {
-  position: sticky;
-  bottom: 0;
-  z-index: 10;                     /* para que quede encima de .msgs-wrap */
   display: flex;
   padding: 10px;
   background: #fff;
   border-top: 1px solid #ddd;
+
+  /* esto fija el form al fondo de .messages */
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
 }
 
-/* Bordes más redondeados para todos los msg-box */
-.msg-box {
-  border-radius: 16px;            /* aumenta aquí el valor si lo quieres aún más redondo */
-  margin-bottom: 8px;
+.reply-form input {
+  flex: 1;
   padding: 10px;
-  position: relative;
+  border: 1px solid #ccc;
+  border-radius: 4px 0 0 4px;
 }
 
-/* Mantén tus estilos de msg-user y msg-ai… */
-.msg-box.msg-user { /* … */ }
-.msg-box.msg-ai   { /* … */ }
+.reply-form button {
+  padding: 10px;
+  border: none;
+  background: #007bff;
+  color: #fff;
+  border-radius: 0 4px 4px 0;
+  cursor: pointer;
+}
+
+.reply-form button:hover {
+  background: #0056b3;
+}
+
+/* mensaje cuando no hay chat seleccionado */
+.no-chat {
+  padding: 20px;
+}
