@@ -1,3 +1,4 @@
+{# templates/chats.html #}
 {% extends 'base.html' %}
 {% block content %}
   <div class="header">
@@ -25,14 +26,22 @@
         </div>
         <div class="msgs-wrap" id="msgs-wrap">
           {% for m in mensajes %}
-            <div class="msg-box">
-              <p>{{ m['mensaje'] or m['respuesta'] }}</p>
+            <!-- Mensaje del usuario -->
+            <div class="msg-box msg-user">
+              <p>{{ m['mensaje'] }}</p>
               <span class="ts">{{ m['timestamp'] }}</span>
             </div>
+            <!-- Respuesta de la IA, si existe -->
+            {% if m['respuesta'] %}
+            <div class="msg-box msg-ai">
+              <p>{{ m['respuesta'] }}</p>
+              <span class="ts">{{ m['timestamp'] }}</span>
+            </div>
+            {% endif %}
           {% endfor %}
         </div>
         <form class="reply-form" method="POST" action="/send-manual">
-          <input type="text" name="texto" placeholder="Escribe tu mensaje..."{% if not IA_ESTADOS[selected] %} disabled{% endif %}>
+          <input type="text" name="texto" placeholder="Escribe tu mensaje...">
           <button type="submit">⏎</button>
         </form>
       {% else %}
