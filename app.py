@@ -13,9 +13,10 @@ app = Flask(__name__)
 VERIFY_TOKEN = os.environ.get('VERIFICATION')
 WHATSAPP_TOKEN = os.environ.get('WHATSAPP_TOKEN')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+MI_NUMERO_BOT = os.environ.get('MI_NUMERO_BOT') or '638096866063629'
 
 # ========= Datos de Railway =========
-DB_HOST = os.environ.get('DB_HOST') or 'interchange.proxy.rlwy.net'
+DB_HOST = os.environ.get('DB_HOST') or 'mysql.railway.internal'
 DB_USER = os.environ.get('DB_USER') or 'root'
 DB_PASSWORD = os.environ.get('DB_PASSWORD')
 DB_NAME = os.environ.get('DB_NAME') or 'railway'
@@ -34,7 +35,7 @@ def get_db_connection():
 # ========= Rutas =========
 @app.route('/')
 def home():
-    return '✅ Plataforma WhatsApp IA conectada a Railway correctamente.'
+    return '✅ Plataforma WhatsApp IA conectada correctamente.'
 
 @app.route('/webhook', methods=['GET'])
 def verificar_token():
@@ -50,25 +51,16 @@ def verificar_token():
 def recibir_mensaje():
     data = request.get_json()
     print("📥 Datos recibidos:", data)
-
     try:
         entry = data['entry'][0]
-        changes = entry['changes'][0]['value']
-
-        # Verificamos que haya mensajes
-        if 'messages' not in changes:
-            print("⚠️ No hay mensajes nuevos.")
-            return "No hay mensajes", 200
-
-        message = changes['messages'][0]
+        message = entry['changes'][0]['value']['messages'][0]
         numero = message['from']
         texto_usuario = message['text']['body']
 
-        # 🔁 Evitar loop infinito (si el bot se responde a sí mismo)
-    MI_NUMERO_BOT = os.environ.get('MI_NUMERO_BOT') or '638096866063629'
-    if numero == MI_NUMERO_BOT:
-    print("🔁 Mensaje del bot (propio número), ignorado.")
-    return "Ignorado", 200
+        # Verificar si el mensaje lo mandó el mismo bot
+        if numero == MI_NUMERO_BOT:
+            print("🔁 Mensaje del bot (propio número), ignorado.")
+            return "Ignorado", 200
 
         print(f"🟢 Mensaje de {numero}: {texto_usuario}")
 
@@ -150,7 +142,7 @@ def guardar_conversacion(numero, mensaje, respuesta):
     except Exception as e:
         print("❌ ERROR al guardar conversación en MySQL:", e)
 
-# ========= Ejecutar (Render ready) =========
+# ========= Ejecutar =========
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
