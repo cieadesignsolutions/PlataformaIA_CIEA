@@ -2,41 +2,39 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Panel de Chats</title>
+  <title>Chats - IA WhatsApp</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
   <div class="sidebar">
     <h2>Conversaciones</h2>
     <ul>
-    {% for chat in chats %}
-      <li class="{{ 'active' if chat.numero==numero else '' }}">
-        <a href="{{ url_for('ver_chat', telefono=chat.numero) }}">
-          {{ chat.numero }}
+      {% for chat in chats %}
+      <li class="{{ 'active' if chat.numero==seleccionado else '' }}">
+        <a href="{{ url_for('ver_chat', telefono=chat['numero']) }}">
+          {{ chat.numero }}<br>
+          <small>{{ chat.ultima[:19] }}</small>
         </a>
       </li>
-    {% endfor %}
+      {% endfor %}
     </ul>
-    <form method="POST" action="{{ url_for('toggle_ai') }}">
-      <button type="submit" class="toggle-btn {{ 'on' if ia_activa else 'off' }}">
-        IA {{ 'ON' if ia_activa else 'OFF' }}
-      </button>
-    </form>
   </div>
-
   <div class="content">
     {% if mensajes %}
-      <h2>Chat con {{ numero }}</h2>
-      <ul class="messages">
+      <h3>Chat con {{ seleccionado }}</h3>
+      <div class="messages">
         {% for m in mensajes %}
-          <li class="{{ 'bot' if m.respuesta else 'user' }}">
-            <span class="msg-text">{{ m.mensaje or m.respuesta }}</span>
-            <span class="msg-time">{{ m.timestamp }}</span>
-          </li>
+        <div class="msg">
+          <p>{{ m.mensaje }}</p>
+          <span>{{ m.timestamp[:19] }}</span>
+          {% if m.respuesta %}
+          <div class="resp">🤖 {{ m.respuesta }}</div>
+          {% endif %}
+        </div>
         {% endfor %}
-      </ul>
+      </div>
     {% else %}
-      <h2>Selecciona una conversación</h2>
+      <h3>Selecciona una conversación</h3>
     {% endif %}
   </div>
 </body>
