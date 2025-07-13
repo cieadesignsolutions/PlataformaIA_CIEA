@@ -1,4 +1,3 @@
-{# templates/chats.html #}
 {% extends 'base.html' %}
 {% block content %}
   <div class="header">
@@ -40,20 +39,53 @@
             {% endif %}
           {% endfor %}
         </div>
+
+        <!-- Formulario con emoji picker y botón fijo abajo -->
         <form class="reply-form" method="POST" action="/send-manual">
-          <input type="text" name="texto" placeholder="Escribe tu mensaje...">
-          <button type="submit">⏎</button>
+          <div class="input-group">
+            <!-- Emoji picker -->
+            <button type="button" class="emoji-btn" title="Emojis">😀</button>
+            <!-- Línea de texto -->
+            <input
+              type="text"
+              name="texto"
+              class="reply-input-line"
+              placeholder="Escribe un mensaje…"
+            >
+            <!-- Botón de envío -->
+            <button type="submit" class="send-btn">Enviar ahora</button>
+          </div>
         </form>
+
       {% else %}
         <p class="no-chat">Selecciona un chat para ver el historial.</p>
       {% endif %}
     </section>
   </div>
+
+  <!-- Emoji Button library -->
+  <script src="https://unpkg.com/@joeattardi/emoji-button@4.6.2/dist/index.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const button = document.querySelector('.emoji-btn');
+      const input   = document.querySelector('.reply-input-line');
+      const picker  = new EmojiButton({
+        position: 'top-start',
+        zIndex: 1000
+      });
+      picker.on('emoji', emoji => {
+        input.value += emoji;
+        input.focus();
+      });
+      button.addEventListener('click', () => picker.togglePicker(button));
+    });
+  </script>
+
   <script>
     // auto-scroll on load
     window.onload = () => {
       const wrap = document.getElementById('msgs-wrap');
-      if(wrap) wrap.scrollTop = wrap.scrollHeight;
+      if (wrap) wrap.scrollTop = wrap.scrollHeight;
     }
   </script>
 {% endblock %}
