@@ -1,70 +1,46 @@
-/* static/css/chats.css (añade o reemplaza estas reglas) */
+/* Asegúrate de que el html y el body llenen todo el alto */
+html, body {
+  height: 100%;
+  margin: 0;
+}
 
-body { margin:0; font-family:Arial,sans-serif; display:flex; height:100vh; }
-.sidebar { width:200px; background:#111; color:#fff; padding:20px; }
-/* … resto de tu CSS existente … */
+/* Tu contenedor principal ya tiene display:flex; flex-direction:column; */
+/* Solo comprueba que .container y .messages también hereden el 100% de altura */
+.container, .messages {
+  height: 100%;
+}
 
-.messages { flex:1; display:flex; flex-direction:column; }
+/* Mensajes repartidos hacia el final */
 .msgs-wrap {
-  flex:1;
+  flex: 1;
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;      /* empuja los mensajes hacia abajo */
   overflow-y: auto;
-  padding:10px;
-  background:#f9f9f9;
-}
-
-/* Mensajes del usuario */
-.msg-box.msg-user {
-  background: #e6f7ff;
-  align-self: flex-start;
-  border: 1px solid #91d5ff;
-  margin-bottom: 8px;
+  scroll-behavior: smooth;        /* opcional: scroll animado */
   padding: 10px;
-  border-radius: 4px;
+  background: #f9f9f9;
 }
 
-/* Respuestas de la IA */
-.msg-box.msg-ai {
-  background: #fff7e6;
-  align-self: flex-end;
-  border: 1px solid #ffd591;
-  margin-bottom: 8px;
-  padding: 10px;
-  border-radius: 4px;
-}
-
-.msg-box .ts {
-  font-size:0.8em;
-  color:#666;
-  position:absolute;
-  bottom:4px;
-  right:8px;
-}
-
+/* Formulario siempre visible al fondo */
 .reply-form {
-  display:flex;
-  padding:10px;
-  background:#fff;
-  border-top:1px solid #ddd;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;                     /* para que quede encima de .msgs-wrap */
+  display: flex;
+  padding: 10px;
+  background: #fff;
+  border-top: 1px solid #ddd;
 }
 
-.reply-form input {
-  flex:1;
-  padding:10px;
-  border:1px solid #ccc;
-  border-radius:4px 0 0 4px;
+/* Bordes más redondeados para todos los msg-box */
+.msg-box {
+  border-radius: 16px;            /* aumenta aquí el valor si lo quieres aún más redondo */
+  margin-bottom: 8px;
+  padding: 10px;
+  position: relative;
 }
 
-.reply-form button {
-  padding:10px;
-  border:none;
-  background:#007bff;
-  color:#fff;
-  border-radius:0 4px 4px 0;
-  cursor:pointer;
-}
-
-.reply-form button:hover {
-  background:#0056b3;
-}
+/* Mantén tus estilos de msg-user y msg-ai… */
+.msg-box.msg-user { /* … */ }
+.msg-box.msg-ai   { /* … */ }
