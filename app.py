@@ -65,9 +65,10 @@ def recibir_mensaje():
         texto_usuario = message['text']['body']
 
         # 🔁 Evitar loop infinito (si el bot se responde a sí mismo)
-        if numero == '15556652659':  # número de prueba del bot
-            print("🔁 Mensaje del bot mismo, ignorado.")
-            return "Ignorado", 200
+        MI_NUMERO_BOT = os.environ.get('MI_NUMERO_BOT') or '15556652659'
+	if numero == MI_NUMERO_BOT:
+    		print("🔁 Mensaje del bot (propio número), ignorado.")
+    		return "Ignorado", 200
 
         print(f"🟢 Mensaje de {numero}: {texto_usuario}")
 
