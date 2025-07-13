@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template, redirect, url_for
 import requests
 import os
 import mysql.connector
@@ -18,8 +18,9 @@ DB_HOST = os.environ.get('DB_HOST')
 DB_USER = os.environ.get('DB_USER')
 DB_PASSWORD = os.environ.get('DB_PASSWORD')
 DB_NAME = os.environ.get('DB_NAME')
+MI_NUMERO_BOT = os.environ.get('MI_NUMERO_BOT') or '638096866063629'
 
-MI_NUMERO_BOT = os.environ.get('MI_NUMERO_BOT') or '638096866063629'  # Asegúrate de definir este
+IA_ESTADO = {'activa': True}  # Estado en memoria
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -32,7 +33,10 @@ def get_db_connection():
         ssl_ca='/etc/ssl/certs/ca-certificates.crt'
     )
 
-# ========= Webhook de verificación =========
+@app.route('/')
+def inicio():
+    return redirect(url_for('ver_panel_chats'))
+
 @app.route('/webhook', methods=['GET'])
 def verificar_token():
     token = request.args.get('hub.verify_token')
@@ -41,11 +45,10 @@ def verificar_token():
         return challenge
     return "Token inválido", 403
 
-# ========= Webhook de mensajes =========
 @app.route('/webhook', methods=['POST'])
 def recibir_mensaje():
     data = request.get_json()
-    print("📥 Recibido:", data)
+    print("\U0001f4e5 Recibido:", data)
     try:
         entry = data['entry'][0]
         changes = entry['changes'][0]
@@ -58,35 +61,46 @@ def recibir_mensaje():
         numero = message['from']
         texto_usuario = message['text']['body']
 
-        # Evitar que el bot se responda a sí mismo
         if numero == MI_NUMERO_BOT:
             print("⛔ Mensaje del mismo bot, ignorado.")
             return "OK", 200
 
-        respuesta = responder_con_ia(texto_usuario)
-        enviar_mensaje(numero, respuesta)
+        respuesta = ""
+        if IA_ESTADO['activa']:
+            respuesta = responder_con_ia(texto_usuario)
+            enviar_mensaje(numero, respuesta)
         guardar_conversacion(numero, texto_usuario, respuesta)
     except Exception as e:
         print("❌ Error en webhook:", e)
-
     return "OK", 200
 
-# ========= Ver chats =========
-@app.route('/chats', methods=['GET'])
-def ver_chats():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM conversaciones ORDER BY timestamp DESC")
-        datos = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(datos)
-    except Exception as e:
-        print("❌ Error al obtener chats:", e)
-        return jsonify([])
+@app.route('/chats')
+def ver_panel_chats():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT DISTINCT numero FROM conversaciones ORDER BY timestamp DESC")
+    chats = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return render_template("chats.html", chats=chats, mensajes=None, ia_activa=IA_ESTADO['activa'], numero=None)
 
-# ========= Utilidades =========
+@app.route('/chats/<telefono>')
+def ver_chat(telefono):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM conversaciones WHERE numero = %s ORDER BY timestamp", (telefono,))
+    mensajes = cursor.fetchall()
+    cursor.execute("SELECT DISTINCT numero FROM conversaciones ORDER BY timestamp DESC")
+    chats = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return render_template("chats.html", chats=chats, mensajes=mensajes, ia_activa=IA_ESTADO['activa'], numero=telefono)
+
+@app.route('/toggle_ai', methods=['POST'])
+def toggle_ai():
+    IA_ESTADO['activa'] = not IA_ESTADO['activa']
+    return redirect(url_for('ver_panel_chats'))
+
 def responder_con_ia(mensaje):
     try:
         completion = client.chat.completions.create(
@@ -115,7 +129,7 @@ def enviar_mensaje(numero, texto):
     }
     try:
         response = requests.post(url, headers=headers, json=payload)
-        print("📤 Enviado:", response.status_code, response.text)
+        print("\U0001f4e4 Enviado:", response.status_code, response.text)
     except Exception as e:
         print("❌ Error al enviar WhatsApp:", e)
 
@@ -137,11 +151,10 @@ def guardar_conversacion(numero, mensaje, respuesta):
         conn.commit()
         cursor.close()
         conn.close()
-        print("💾 Conversación guardada.")
+        print("\U0001f4be Conversación guardada.")
     except Exception as e:
         print("❌ Error al guardar en MySQL:", e)
 
-# ========= Inicio =========
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
