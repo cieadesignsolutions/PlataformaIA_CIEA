@@ -2,24 +2,32 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>CIEA IA - Panel</title>
+  <title>{% block title %}CIEA IA{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
-  <div class="sidebar">
-    <h1>CIEA IA</h1>
-    <ul>
-      <li><a href="{{ url_for('ver_chats') }}">Chats</a></li>
-      <li><a href="#">Negocio</a></li>
-      <li><a href="#">Personalidad</a></li>
-      <li><a href="#">Memoria</a></li>
-      <li><a href="#">Entrenamiento</a></li>
-      <li><a href="#">Avanzado</a></li>
-    </ul>
+
+  <div class="layout">
+
+    <!-- SIDEBAR PRINCIPAL FIJO -->
+    <aside class="sidebar">
+      <h1>CIEA IA</h1>
+      <ul>
+        <li><a href="{{ url_for('ver_chats') }}">Chats</a></li>
+        <li><a href="#">Negocio</a></li>
+        <li><a href="#">Personalidad</a></li>
+        <li><a href="#">Memoria</a></li>
+        <li><a href="#">Entrenamiento</a></li>
+        <li><a href="#">Avanzado</a></li>
+      </ul>
+    </aside>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="main-content">
+      {% block content %}{% endblock %}
+    </main>
+
   </div>
-  <div class="main">
-    {% block content %}{% endblock %}
-  </div>
+
 </body>
 </html>
