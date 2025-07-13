@@ -1,4 +1,3 @@
-
 import os
 import requests
 import mysql.connector
@@ -19,7 +18,7 @@ DB_HOST        = os.getenv("DB_HOST")
 DB_USER        = os.getenv("DB_USER")
 DB_PASSWORD    = os.getenv("DB_PASSWORD")
 DB_NAME        = os.getenv("DB_NAME")
-MI_NUMERO_BOT  = os.getenv("MI_NUMERO_BOT")  # p.ej. "638096866063629"
+MI_NUMERO_BOT  = os.getenv("MI_NUMERO_BOT")  # ej. "524491182201"
 
 # Estado de IA por chat en memoria (clave: numero)
 IA_ESTADOS = {}
@@ -90,8 +89,9 @@ def ver_chats():
     conn   = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute(
-        "SELECT numero, MAX(timestamp) as ultima FROM conversaciones "
-        "GROUP BY numero ORDER BY ultima DESC"
+        "SELECT numero, MAX(timestamp) AS ultima "
+        "FROM conversaciones GROUP BY numero "
+        "ORDER BY ultima DESC"
     )
     chats = cursor.fetchall()
     cursor.close()
@@ -109,13 +109,14 @@ def ver_chat(numero):
     conn   = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute(
-        "SELECT * FROM conversaciones WHERE numero=%s ORDER BY timestamp ASC", 
+        "SELECT * FROM conversaciones WHERE numero=%s ORDER BY timestamp ASC",
         (numero,)
     )
     msgs = cursor.fetchall()
     cursor.execute(
-        "SELECT numero, MAX(timestamp) as ultima FROM conversaciones "
-        "GROUP BY numero ORDER BY ultima DESC"
+        "SELECT numero, MAX(timestamp) AS ultima "
+        "FROM conversaciones GROUP BY numero "
+        "ORDER BY ultima DESC"
     )
     chats = cursor.fetchall()
     cursor.close()
@@ -133,10 +134,23 @@ def toggle_ai(numero):
     IA_ESTADOS[numero] = not IA_ESTADOS.get(numero, True)
     return redirect(url_for('ver_chat', numero=numero))
 
-# ——— Nueva ruta: eliminar todo un chat ———
+# ——— Envío manual desde el formulario ———
+@app.route('/send-manual', methods=['POST'])
+def enviar_manual():
+    numero    = request.form.get('numero')
+    texto     = request.form.get('texto')
+    respuesta = ''
+
+    if IA_ESTADOS.get(numero, True):
+        respuesta = responder_con_ia(texto)
+        enviar_mensaje(numero, respuesta)
+
+    guardar_conversacion(numero, texto, respuesta)
+    return redirect(url_for('ver_chat', numero=numero))
+
+# ——— Eliminar un chat completo ———
 @app.route('/chats/<numero>/eliminar', methods=['POST'])
 def eliminar_chat(numero):
-    # Borra todos los mensajes de esa conversación
     conn   = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
@@ -146,11 +160,7 @@ def eliminar_chat(numero):
     conn.commit()
     cursor.close()
     conn.close()
-
-    # Limpia también el estado de IA en memoria
     IA_ESTADOS.pop(numero, None)
-
-    # Redirige al listado de chats
     return redirect(url_for('ver_chats'))
 
 # ——— Funciones utilitarias ———
@@ -166,19 +176,19 @@ def responder_con_ia(mensaje):
         return resp.choices[0].message.content.strip()
     except Exception as e:
         app.logger.error(f"🔴 OpenAI error: {e}")
-        return 'Lo siento, error.'
+        return 'Lo siento, hubo un error con la IA.'
 
 def enviar_mensaje(numero, texto):
     url = f"https://graph.facebook.com/v17.0/{MI_NUMERO_BOT}/messages"
     headers = {
-        'Authorization':f'Bearer {WHATSAPP_TOKEN}',
-        'Content-Type':'application/json'
+        'Authorization': f'Bearer {WHATSAPP_TOKEN}',
+        'Content-Type': 'application/json'
     }
     payload = {
-        'messaging_product':'whatsapp',
-        'to':numero,
-        'type':'text',
-        'text':{'body':texto}
+        'messaging_product': 'whatsapp',
+        'to': numero,
+        'type': 'text',
+        'text': {'body': texto}
     }
     try:
         r = requests.post(url, headers=headers, json=payload)
@@ -199,7 +209,7 @@ def guardar_conversacion(numero, mensaje, respuesta):
         ) ENGINE=InnoDB;
     ''')
     cursor.execute(
-        'INSERT INTO conversaciones (numero, mensaje, respuesta) VALUES (%s,%s,%s)',
+        "INSERT INTO conversaciones (numero, mensaje, respuesta) VALUES (%s, %s, %s)",
         (numero, mensaje, respuesta)
     )
     conn.commit()
