@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>WhatsApp IA - Panel</title>
+  <title>CIEA IA - Panel</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
-  <nav class="sidebar">
+  <div class="sidebar">
     <h1>CIEA IA</h1>
     <ul>
       <li><a href="{{ url_for('ver_chats') }}">Chats</a></li>
@@ -17,9 +17,9 @@
       <li><a href="#">Entrenamiento</a></li>
       <li><a href="#">Avanzado</a></li>
     </ul>
-  </nav>
-  <main class="main">
+  </div>
+  <div class="main">
     {% block content %}{% endblock %}
-  </main>
+  </div>
 </body>
 </html>
