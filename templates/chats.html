@@ -1,33 +1,43 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Panel de Conversaciones - IA WhatsApp</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  <meta charset="UTF-8">
+  <title>Panel de Chats</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
-    <div class="sidebar">
-        <h2>Conversaciones</h2>
-        <ul>
-            {% for chat in chats %}
-            <li><a href="{{ url_for('ver_chat', telefono=chat['numero']) }}">{{ chat['numero'] }}</a></li>
-            {% endfor %}
-        </ul>
-    </div>
+  <div class="sidebar">
+    <h2>Conversaciones</h2>
+    <ul>
+      {% for chat in chats %}
+        <li class="{{ 'active' if chat.numero==numero else '' }}">
+          <a href="{{ url_for('ver_chat', telefono=chat.numero) }}">
+            {{ chat.numero }}
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+    <form method="POST" action="{{ url_for('toggle_ai') }}">
+      <button type="submit" class="toggle-btn {{ 'on' if ia_activa else 'off' }}">
+        IA {{ 'ON' if ia_activa else 'OFF' }}
+      </button>
+    </form>
+  </div>
 
-    <div class="content">
-        <div class="header">
-            <h1>Plataforma IA WhatsApp</h1>
-            <form method="POST" action="{{ url_for('toggle_ia') }}">
-                <button class="toggle-btn {{ 'toggle-on' if ia_activa else 'toggle-off' }}" type="submit">
-                    {{ 'IA ON' if ia_activa else 'IA OFF' }}
-                </button>
-            </form>
-        </div>
-
-        <div class="chat-box">
-            <p>Selecciona una conversación desde el panel izquierdo.</p>
-        </div>
-    </div>
+  <div class="content">
+    {% if mensajes %}
+      <h2>Chat con {{ numero }}</h2>
+      <ul class="messages">
+        {% for m in mensajes %}
+          <li class="{{ 'bot' if m.respuesta else 'user' }}">
+            <span class="msg-text">{{ m.mensaje or m.respuesta }}</span>
+            <span class="msg-time">{{ m.timestamp }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <h2>Selecciona una conversación</h2>
+    {% endif %}
+  </div>
 </body>
 </html>
