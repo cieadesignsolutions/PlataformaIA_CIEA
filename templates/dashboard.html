@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}Home – Dashboard{% endblock %}
+{% block content %}
+  <div class="dashboard-header">
+    <h2>Dashboard General</h2>
+    <div class="period-selector">
+      <a href="{{ url_for('home', period='week') }}" class="{{ 'active' if period=='week' else '' }}">Semana</a> |
+      <a href="{{ url_for('home', period='month') }}" class="{{ 'active' if period=='month' else '' }}">Mes</a>
+    </div>
+  </div>
+
+  <div class="dashboard-stats">
+    <div class="stat-card">
+      <strong>Chats Diferentes:</strong> {{ chat_counts }}
+    </div>
+    <div class="stat-card">
+      <strong>Mensajes Respondidos:</strong> {{ total_responded }}
+    </div>
+  </div>
+
+  <h3>Mensajes por Chat</h3>
+  <table class="stats-table">
+    <thead>
+      <tr><th>Chat</th><th>Cantidad</th></tr>
+    </thead>
+    <tbody>
+      {% for numero, cnt in messages_per_chat %}
+      <tr>
+        <td>{{ numero }}</td>
+        <td>{{ cnt }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}
