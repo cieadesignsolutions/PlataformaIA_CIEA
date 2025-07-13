@@ -1,3 +1,4 @@
+{# templates/chats.html #}
 {% extends 'base.html' %}
 {% block content %}
   <!-- Encabezado general -->
@@ -19,59 +20,67 @@
       </ul>
     </aside>
 
-    <!-- 2) CHAT CENTRAL -->
-    <div class="chat-center">
-      <!-- Cabecera del chat seleccionado -->
-      <div class="chat-header">
-        <span>Chat con {{ selected }}</span>
-      </div>
+    {# 2) CHAT CENTRAL + SIDEBAR DERECHO solo si hay un chat seleccionado #}
+    {% if mensajes is not none %}
+      <!-- CHAT CENTRAL -->
+      <div class="chat-center">
+        <!-- Cabecera del chat -->
+        <div class="chat-header">
+          <span>Chat con {{ selected }}</span>
+        </div>
 
-      <!-- Mensajes con scroll propio -->
-      <div class="msgs-wrap" id="msgs-wrap">
-        {% if mensajes %}
+        <!-- Mensajes con scroll propio -->
+        <div class="msgs-wrap" id="msgs-wrap">
           {% for m in mensajes %}
+            <!-- Mensaje del usuario -->
             <div class="msg-box msg-user">
               <p>{{ m['mensaje'] }}</p>
               <span class="ts">{{ m['timestamp'] }}</span>
             </div>
+            <!-- Respuesta de la IA, si existe -->
             {% if m['respuesta'] %}
-            <div class="msg-box msg-ai">
-              <p>{{ m['respuesta'] }}</p>
-              <span class="ts">{{ m['timestamp'] }}</span>
-            </div>
+              <div class="msg-box msg-ai">
+                <p>{{ m['respuesta'] }}</p>
+                <span class="ts">{{ m['timestamp'] }}</span>
+              </div>
             {% endif %}
           {% endfor %}
-        {% else %}
-          <p class="no-chat">Selecciona un chat para ver el historial.</p>
-        {% endif %}
+        </div>
+
+        <!-- Formulario de respuesta fijo al fondo -->
+        <form class="reply-form" method="POST" action="/send-manual">
+          <div class="input-group">
+            <button type="button" class="emoji-btn" title="Emojis">😀</button>
+            <input
+              type="text"
+              name="texto"
+              class="reply-input-line"
+              placeholder="Escribe un mensaje…"
+            >
+            <button type="submit" class="send-btn">Enviar ahora</button>
+          </div>
+        </form>
       </div>
 
-      <!-- Formulario de respuesta fijo al fondo -->
-      <form class="reply-form" method="POST" action="/send-manual">
-        <div class="input-group">
-          <button type="button" class="emoji-btn" title="Emojis">😀</button>
-          <input
-            type="text"
-            name="texto"
-            class="reply-input-line"
-            placeholder="Escribe un mensaje…"
-          >
-          <button type="submit" class="send-btn">Enviar ahora</button>
-        </div>
-      </form>
-    </div>
+      <!-- SIDEBAR DERECHO: acciones sobre el chat -->
+      <aside class="sidebar sidebar-right">
+        <form method="POST" action="{{ url_for('toggle_ai', numero=selected) }}">
+          <button type="submit"
+                  class="toggle-btn {{ 'on' if IA_ESTADOS[selected] else 'off' }}">
+            IA {{ 'ON' if IA_ESTADOS[selected] else 'OFF' }}
+          </button>
+        </form>
+        <form method="POST" action="{{ url_for('eliminar_chat', numero=selected) }}">
+          <button type="submit" class="delete-btn">🗑️ Eliminar Chat</button>
+        </form>
+      </aside>
 
-    <!-- 3) SIDEBAR DERECHO: acciones -->
-    <aside class="sidebar sidebar-right">
-      <form method="POST" action="{{ url_for('toggle_ai', numero=selected) }}">
-        <button type="submit" class="toggle-btn {{ 'on' if IA_ESTADOS[selected] else 'off' }}">
-          IA {{ 'ON' if IA_ESTADOS[selected] else 'OFF' }}
-        </button>
-      </form>
-      <form method="POST" action="{{ url_for('eliminar_chat', numero=selected) }}">
-        <button type="submit" class="delete-btn">🗑️ Eliminar Chat</button>
-      </form>
-    </aside>
+    {% else %}
+      <!-- Estado cuando no hay chat seleccionado -->
+      <div class="chat-center">
+        <p class="no-chat">Selecciona un chat para ver el historial.</p>
+      </div>
+    {% endif %}
 
   </div>
 
@@ -79,6 +88,7 @@
   <script src="https://unpkg.com/@joeattardi/emoji-button@4.6.2/dist/index.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
+      // Emoji picker setup
       const button = document.querySelector('.emoji-btn');
       const input   = document.querySelector('.reply-input-line');
       const picker  = new EmojiButton({ position: 'top-start', zIndex: 1000 });
@@ -88,7 +98,7 @@
       });
       button.addEventListener('click', () => picker.togglePicker(button));
 
-      // Auto-scroll al final
+      // Auto-scroll al final de los mensajes
       const wrap = document.getElementById('msgs-wrap');
       if (wrap) wrap.scrollTop = wrap.scrollHeight;
     });
