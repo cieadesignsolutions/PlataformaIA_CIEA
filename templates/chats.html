@@ -9,13 +9,13 @@
   <div class="sidebar">
     <h2>Conversaciones</h2>
     <ul>
-      {% for chat in chats %}
-        <li class="{{ 'active' if chat.numero==numero else '' }}">
-          <a href="{{ url_for('ver_chat', telefono=chat.numero) }}">
-            {{ chat.numero }}
-          </a>
-        </li>
-      {% endfor %}
+    {% for chat in chats %}
+      <li class="{{ 'active' if chat.numero==numero else '' }}">
+        <a href="{{ url_for('ver_chat', telefono=chat.numero) }}">
+          {{ chat.numero }}
+        </a>
+      </li>
+    {% endfor %}
     </ul>
     <form method="POST" action="{{ url_for('toggle_ai') }}">
       <button type="submit" class="toggle-btn {{ 'on' if ia_activa else 'off' }}">
