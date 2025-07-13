@@ -5,7 +5,7 @@
   </div>
   <div class="container">
 
-    <!-- SIDEBAR IZQUIERDO: lista de chats -->
+    <!-- Sidebar chat-list -->
     <aside class="chat-list">
       <ul>
         {% for c in chats %}
@@ -16,7 +16,7 @@
       </ul>
     </aside>
 
-    <!-- SECCIÓN CENTRAL: mensajes -->
+    <!-- Mensajes -->
     <section class="messages">
       {% if mensajes is not none %}
         <div class="chat-header">
@@ -44,7 +44,6 @@
           {% endfor %}
         </div>
 
-        <!-- Formulario de respuesta manual -->
         <form class="reply-form" method="POST" action="{{ url_for('enviar_manual') }}">
           <div class="input-group">
             <button type="button" class="emoji-btn" title="Emojis">😀</button>
@@ -59,13 +58,12 @@
             <button type="submit" class="send-btn">Enviar ahora</button>
           </div>
         </form>
-
       {% else %}
         <p class="no-chat">Selecciona un chat para ver el historial.</p>
       {% endif %}
     </section>
 
-    <!-- SIDEBAR DERECHO: solo si hay un chat seleccionado -->
+    <!-- Sidebar derecho -->
     {% if mensajes is not none %}
       <aside class="sidebar-right">
         <form method="POST" action="{{ url_for('eliminar_chat', numero=selected) }}">
@@ -82,20 +80,15 @@
 
   </div>
 
-  <!-- Emoji Button library -->
+  <!-- Emoji Button -->
   <script src="https://unpkg.com/@joeattardi/emoji-button@4.6.2/dist/index.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const button = document.querySelector('.emoji-btn');
       const input  = document.querySelector('.reply-input-line');
       const picker = new EmojiButton({ position: 'top-start', zIndex: 1000 });
-      picker.on('emoji', emoji => {
-        input.value += emoji;
-        input.focus();
-      });
+      picker.on('emoji', emoji => { input.value += emoji; input.focus(); });
       button.addEventListener('click', () => picker.togglePicker(button));
-
-      // Auto-scroll al final
       const wrap = document.getElementById('msgs-wrap');
       if (wrap) wrap.scrollTop = wrap.scrollHeight;
     });
