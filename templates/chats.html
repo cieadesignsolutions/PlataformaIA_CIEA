@@ -2,39 +2,44 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Chats - IA WhatsApp</title>
+  <title>Chats IA WhatsApp</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
   <div class="sidebar">
     <h2>Conversaciones</h2>
     <ul>
-      {% for chat in chats %}
-      <li class="{{ 'active' if chat.numero==seleccionado else '' }}">
-        <a href="{{ url_for('ver_chat', telefono=chat['numero']) }}">
-          {{ chat.numero }}<br>
-          <small>{{ chat.ultima[:19] }}</small>
+      {% for c in chats %}
+      <li class="{{ 'active' if selected==c.numero else '' }}">
+        <a href="{{ url_for('ver_chat', telefono=c.numero) }}">
+          {{ c.numero }}
+          <small>{{ c.ultima.strftime('%Y-%m-%d %H:%M') }}</small>
         </a>
       </li>
       {% endfor %}
     </ul>
+    <form method="POST" action="{{ url_for('toggle_ai') }}">
+      <button type="submit" class="btn-ia {{ 'on' if ia_on else 'off' }}">
+        IA {{ 'ON' if ia_on else 'OFF' }}
+      </button>
+    </form>
   </div>
   <div class="content">
     {% if mensajes %}
-      <h3>Chat con {{ seleccionado }}</h3>
+      <h2>Chat con {{ selected }}</h2>
       <div class="messages">
         {% for m in mensajes %}
-        <div class="msg">
+        <div class="msg-box">
           <p>{{ m.mensaje }}</p>
-          <span>{{ m.timestamp[:19] }}</span>
           {% if m.respuesta %}
-          <div class="resp">🤖 {{ m.respuesta }}</div>
+          <p class="resp">{{ m.respuesta }}</p>
           {% endif %}
+          <small>{{ m.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</small>
         </div>
         {% endfor %}
       </div>
     {% else %}
-      <h3>Selecciona una conversación</h3>
+      <h2>Selecciona un chat</h2>
     {% endif %}
   </div>
 </body>
