@@ -1,11 +1,8 @@
 {% extends 'base.html' %}
 {% block content %}
-  <div class="header">
-    <h2>Conversaciones</h2>
-  </div>
+  <div class="header"><h2>Conversaciones</h2></div>
   <div class="container">
-
-    <!-- Sidebar chat-list -->
+    <!-- Sidebar chats -->
     <aside class="chat-list">
       <ul>
         {% for c in chats %}
@@ -28,33 +25,19 @@
             </button>
           </form>
         </div>
-
         <div class="msgs-wrap" id="msgs-wrap">
           {% for m in mensajes %}
-            <div class="msg-box msg-user">
-              <p>{{ m['mensaje'] }}</p>
-              <span class="ts">{{ m['timestamp'] }}</span>
-            </div>
+            <div class="msg-box msg-user"><p>{{ m['mensaje'] }}</p><span class="ts">{{ m['timestamp'] }}</span></div>
             {% if m['respuesta'] %}
-              <div class="msg-box msg-ai">
-                <p>{{ m['respuesta'] }}</p>
-                <span class="ts">{{ m['timestamp'] }}</span>
-              </div>
+              <div class="msg-box msg-ai"><p>{{ m['respuesta'] }}</p><span class="ts">{{ m['timestamp'] }}</span></div>
             {% endif %}
           {% endfor %}
         </div>
-
         <form class="reply-form" method="POST" action="{{ url_for('enviar_manual') }}">
           <div class="input-group">
-            <button type="button" class="emoji-btn" title="Emojis">😀</button>
+            <button type="button" class="emoji-btn">😀</button>
             <input type="hidden" name="numero" value="{{ selected }}">
-            <input
-              type="text"
-              name="texto"
-              class="reply-input-line"
-              placeholder="Escribe un mensaje…"
-              required
-            >
+            <input type="text" name="texto" class="reply-input-line" placeholder="Escribe un mensaje…" required>
             <button type="submit" class="send-btn">Enviar ahora</button>
           </div>
         </form>
@@ -77,20 +60,18 @@
         </form>
       </aside>
     {% endif %}
-
   </div>
 
-  <!-- Emoji Button -->
   <script src="https://unpkg.com/@joeattardi/emoji-button@4.6.2/dist/index.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const button = document.querySelector('.emoji-btn');
-      const input  = document.querySelector('.reply-input-line');
-      const picker = new EmojiButton({ position: 'top-start', zIndex: 1000 });
-      picker.on('emoji', emoji => { input.value += emoji; input.focus(); });
-      button.addEventListener('click', () => picker.togglePicker(button));
-      const wrap = document.getElementById('msgs-wrap');
-      if (wrap) wrap.scrollTop = wrap.scrollHeight;
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const btn = document.querySelector('.emoji-btn');
+      const inp = document.querySelector('.reply-input-line');
+      const picker = new EmojiButton({ position:'top-start', zIndex:1000 });
+      picker.on('emoji', e=>{ inp.value+=e; inp.focus(); });
+      btn.addEventListener('click', ()=>picker.togglePicker(btn));
+      const wrap=document.getElementById('msgs-wrap');
+      if(wrap) wrap.scrollTop=wrap.scrollHeight;
     });
   </script>
 {% endblock %}
