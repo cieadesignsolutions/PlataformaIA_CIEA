@@ -114,14 +114,15 @@ body {
 
 .msg-box {
   position: relative;
-  margin-bottom: 10px;
-  padding: 12px;
-  padding-bottom: 28px;       /* espacio para timestamp */
+  margin-bottom: 8px;        /* menos separación vertical */
+  padding: 8px 16px;         /* menos padding arriba/abajo, más a los lados */
+  padding-bottom: 24px;      /* espacio para el timestamp */
   border-radius: 8px;
-  max-width: 70%;
+  max-width: 80%;            /* ocupan más ancho y menos altura */
   word-wrap: break-word;
   white-space: pre-wrap;
 }
+
 
 /* Usuario: azul izquierda */
 .msg-box.msg-user {
