@@ -1,62 +1,57 @@
-/* ========== styles.css (RESTORED + INPUT FIJO + BURBUJAS + EMOJIS) ========== */
+/* ========== styles.css (3 COLUMN LAYOUT + FORM FIJO) ========== */
 
-/* ——————————————————————————————
-   1) LAYOUT GENERAL
-   —————————————————————————————— */
+/* 1) Layout general del body y header */
 html, body {
-  height: 100%;
   margin: 0;
+  height: 100%;
 }
 body {
-  font-family: Arial, sans-serif;
   display: flex;
-  height: 100vh;
+  flex-direction: column;
+  font-family: Arial, sans-serif;
 }
-.sidebar {
-  width: 200px;
-  background: #111;
-  color: #fff;
-  padding: 20px;
+.header {
+  background: #f5f5f5;
+  padding: 10px 20px;
+  border-bottom: 1px solid #ddd;
 }
-.sidebar h1 {
-  font-size: 1.5em;
-  margin-bottom: 1em;
-}
-.sidebar ul {
-  list-style: none;
-  padding: 0;
-}
-.sidebar li {
-  margin: 1em 0;
-}
-.sidebar a {
-  color: #ccc;
-  text-decoration: none;
-}
-.sidebar a:hover {
-  color: #fff;
-}
+
+/* 2) Contenedor principal: 3 columnas */
 .container {
   display: flex;
   flex: 1;
+  height: calc(100vh - 52px); /* resta la altura aproximada del header */
 }
 
-/* ——————————————————————————————
-   2) CHAT-LIST (SUBMENÚ)
-   —————————————————————————————— */
-.chat-list {
-  width: 200px;
+/* 3) SIDEBAR IZQUIERDO y DERECHO */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
   background: #fafafa;
   border-right: 1px solid #ddd;
-  overflow-y: auto;
+  box-sizing: border-box;
 }
-.chat-list ul {
+.sidebar-left {
+  width: 220px;
+  border-right: 1px solid #ddd;
+}
+.sidebar-right {
+  width: 200px;
+  border-left: 1px solid #ddd;
+  background: #fff;
+}
+
+/* Lista de chats */
+.chat-list {
   list-style: none;
   margin: 0;
   padding: 0;
+  overflow-y: auto;
+  flex: 1;
 }
 .chat-list li {
-  padding: 10px;
+  margin-bottom: 8px;
 }
 .chat-list li.active {
   background: #e0e0e0;
@@ -66,72 +61,77 @@ body {
   color: #333;
 }
 
-/* ——————————————————————————————
-   3) SECCIÓN DE MENSAJES
-   —————————————————————————————— */
-.messages {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+/* Botones del sidebar derecho */
+.toggle-btn,
+.delete-btn {
+  margin-bottom: 12px;
+  padding: 8px;
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95em;
+  border-radius: 4px;
+}
+.toggle-btn.on {
+  background: #4caf50;
+  color: #fff;
+}
+.toggle-btn.off {
+  background: #f44336;
+  color: #fff;
+}
+.delete-btn {
+  background: #ff5722;
+  color: #fff;
 }
 
-/* Cabecera del chat */
-.chat-header {
+/* 4) CHAT CENTRAL */
+.chat-center {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  width: 600px;           /* ancho fijo del chat */
+  border-right: 1px solid #ddd;
+  box-sizing: border-box;
+}
+
+/* Cabecera interna */
+.chat-header {
   padding: 10px;
   background: #fff;
   border-bottom: 1px solid #ddd;
 }
-/* Toggle IA */
-.toggle-btn {
-  border: none;
-  padding: 6px 12px;
-  cursor: pointer;
-}
-.toggle-btn.on {
-  background: green;
-  color: #fff;
-}
-.toggle-btn.off {
-  background: red;
-  color: #fff;
-}
 
-/* ——————————————————————————————
-   4) BURBUJAS Y CONTENEDOR DE MENSAJES
-   —————————————————————————————— */
+/* 5) Mensajes con scroll independiente */
 .msgs-wrap {
   flex: 1;
+  overflow-y: auto;
+  background: #f9f9f9;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;  /* nuevos abajo */
-  overflow-y: auto;
-  padding: 10px;
-  background: #f9f9f9;
+  justify-content: flex-end; /* últimos abajo */
 }
 
+/* Estilos genéricos de burbuja */
 .msg-box {
   position: relative;
-  margin-bottom: 8px;        /* menos separación vertical */
-  padding: 4px 8px;         /* menos padding arriba/abajo, más a los lados */
-  padding-bottom: 18px;      /* espacio para el timestamp */
-  border-radius: 16px;
-  max-width: 90%;            /* ocupan más ancho y menos altura */
+  margin-bottom: 8px;
+  padding: 8px 16px;
+  padding-bottom: 24px;  /* espacio para timestamp */
+  border-radius: 8px;
+  max-width: 80%;
   word-wrap: break-word;
   white-space: pre-wrap;
 }
 
-
-/* Usuario: azul izquierda */
+/* Usuario = azul izquierda */
 .msg-box.msg-user {
   background: #e6f7ff;
   border: 1px solid #91d5ff;
   align-self: flex-start;
 }
 
-/* IA: amarillo derecha */
+/* IA = amarillo derecha */
 .msg-box.msg-ai {
   background: #fff7e6;
   border: 1px solid #ffd591;
@@ -147,54 +147,44 @@ body {
   color: #666;
 }
 
-/* ——————————————————————————————
-   5) FORMULARIO FIJO + INPUT CUSTOM + EMOJIS
-   —————————————————————————————— */
+/* 6) Formulario de respuesta fijo al fondo del centro */
 .reply-form {
   position: sticky;
   bottom: 0;
-  z-index: 1;
   background: #fff;
   border-top: 1px solid #ddd;
   padding: 10px;
+  box-sizing: border-box;
 }
 
+/* Input + emojis + botón */
 .input-group {
   display: flex;
   align-items: center;
 }
-
 .reply-input-line {
   flex: 1;
   padding: 8px 12px;
-  border: 1px solid var(--input-border, #ccc);
+  border: 1px solid #ccc;
   border-radius: 20px;
-  background: var(--input-bg, #fff);
-  transition: border-color .2s;
+  margin: 0 8px;
   font-size: 1em;
 }
-
 .reply-input-line:focus {
   outline: none;
-  border-color: var(--input-focus, #007bff);
+  border-color: #007bff;
 }
-
-/* Emoji picker button */
 .emoji-btn {
   background: none;
   border: none;
   font-size: 1.5em;
-  margin-right: 8px;
   cursor: pointer;
 }
-
-/* Botón de envío */
 .send-btn {
-  margin-left: 8px;
   padding: 8px 16px;
-  border: none;
   background: #007bff;
   color: #fff;
+  border: none;
   border-radius: 4px;
   cursor: pointer;
   font-weight: bold;
@@ -203,7 +193,7 @@ body {
   background: #0056b3;
 }
 
-/* Sin chat seleccionado */
+/* Mensaje “no chat” */
 .no-chat {
   padding: 20px;
 }
