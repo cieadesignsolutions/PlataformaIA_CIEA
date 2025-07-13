@@ -13,13 +13,13 @@ app = Flask(__name__)
 VERIFY_TOKEN = os.environ.get('VERIFICATION')
 WHATSAPP_TOKEN = os.environ.get('WHATSAPP_TOKEN')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
-MI_NUMERO_BOT = os.environ.get('MI_NUMERO_BOT') or '38096866063629'
+MI_NUMERO_BOT = os.environ.get('MI_NUMERO_BOT')
 
 # ========= Datos de Railway =========
-DB_HOST = os.environ.get('DB_HOST') or 'mysql.railway.internal'
-DB_USER = os.environ.get('DB_USER') or 'root'
+DB_HOST = os.environ.get('DB_HOST')
+DB_USER = os.environ.get('DB_USER')
 DB_PASSWORD = os.environ.get('DB_PASSWORD')
-DB_NAME = os.environ.get('DB_NAME') or 'railway'
+DB_NAME = os.environ.get('DB_NAME')
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -108,7 +108,7 @@ def responder_con_ia(mensaje):
         return "Lo siento, hubo un error."
 
 def enviar_mensaje(numero, texto):
-    url = "https://graph.facebook.com/v19.0/638096866063629/messages"
+    url = "https://graph.facebook.com/v19.0/638096866063628/messages"
     headers = {
         "Authorization": f"Bearer {WHATSAPP_TOKEN}",
         "Content-Type": "application/json"
