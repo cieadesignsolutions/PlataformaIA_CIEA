@@ -1,3 +1,4 @@
+
 import os
 import requests
 import mysql.connector
@@ -89,33 +90,68 @@ def ver_chats():
     conn   = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute(
-        "SELECT numero, MAX(timestamp) as ultima FROM conversaciones GROUP BY numero ORDER BY ultima DESC"
+        "SELECT numero, MAX(timestamp) as ultima FROM conversaciones "
+        "GROUP BY numero ORDER BY ultima DESC"
     )
     chats = cursor.fetchall()
     cursor.close()
     conn.close()
-    return render_template('chats.html', chats=chats, mensajes=None, selected=None, IA_ESTADOS=IA_ESTADOS)
+    return render_template(
+        'chats.html',
+        chats=chats,
+        mensajes=None,
+        selected=None,
+        IA_ESTADOS=IA_ESTADOS
+    )
 
 @app.route('/chats/<numero>')
 def ver_chat(numero):
     conn   = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute(
-        "SELECT * FROM conversaciones WHERE numero=%s ORDER BY timestamp ASC", (numero,)
+        "SELECT * FROM conversaciones WHERE numero=%s ORDER BY timestamp ASC", 
+        (numero,)
     )
     msgs = cursor.fetchall()
     cursor.execute(
-        "SELECT numero, MAX(timestamp) as ultima FROM conversaciones GROUP BY numero ORDER BY ultima DESC"
+        "SELECT numero, MAX(timestamp) as ultima FROM conversaciones "
+        "GROUP BY numero ORDER BY ultima DESC"
     )
     chats = cursor.fetchall()
     cursor.close()
     conn.close()
-    return render_template('chats.html', chats=chats, mensajes=msgs, selected=numero, IA_ESTADOS=IA_ESTADOS)
+    return render_template(
+        'chats.html',
+        chats=chats,
+        mensajes=msgs,
+        selected=numero,
+        IA_ESTADOS=IA_ESTADOS
+    )
 
 @app.route('/toggle_ai/<numero>', methods=['POST'])
 def toggle_ai(numero):
     IA_ESTADOS[numero] = not IA_ESTADOS.get(numero, True)
     return redirect(url_for('ver_chat', numero=numero))
+
+# ——— Nueva ruta: eliminar todo un chat ———
+@app.route('/chats/<numero>/eliminar', methods=['POST'])
+def eliminar_chat(numero):
+    # Borra todos los mensajes de esa conversación
+    conn   = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "DELETE FROM conversaciones WHERE numero = %s",
+        (numero,)
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    # Limpia también el estado de IA en memoria
+    IA_ESTADOS.pop(numero, None)
+
+    # Redirige al listado de chats
+    return redirect(url_for('ver_chats'))
 
 # ——— Funciones utilitarias ———
 def responder_con_ia(mensaje):
@@ -139,8 +175,10 @@ def enviar_mensaje(numero, texto):
         'Content-Type':'application/json'
     }
     payload = {
-        'messaging_product':'whatsapp','to':numero,
-        'type':'text','text':{'body':texto}
+        'messaging_product':'whatsapp',
+        'to':numero,
+        'type':'text',
+        'text':{'body':texto}
     }
     try:
         r = requests.post(url, headers=headers, json=payload)
@@ -161,8 +199,8 @@ def guardar_conversacion(numero, mensaje, respuesta):
         ) ENGINE=InnoDB;
     ''')
     cursor.execute(
-        'INSERT INTO conversaciones (numero,mensaje,respuesta) VALUES (%s,%s,%s)',
-        (numero,mensaje,respuesta)
+        'INSERT INTO conversaciones (numero, mensaje, respuesta) VALUES (%s,%s,%s)',
+        (numero, mensaje, respuesta)
     )
     conn.commit()
     cursor.close()
