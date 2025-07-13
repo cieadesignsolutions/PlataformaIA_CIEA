@@ -51,9 +51,9 @@ def recibir_mensaje():
 
     respuesta = ""
     if IA_ESTADO['activa']:
-        respuesta = responder_con_ia(texto)
+        respuesta = responder_con_ia(texto_usuario)
         enviar_mensaje(numero, respuesta)
-    guardar_conversacion(numero, texto, respuesta)
+    guardar_conversacion(numero, texto_usuario, respuesta)
     return "OK", 200
 
 @app.route('/chats')
