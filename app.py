@@ -13,7 +13,7 @@ app = Flask(__name__)
 VERIFY_TOKEN = os.environ.get('VERIFICATION')
 WHATSAPP_TOKEN = os.environ.get('WHATSAPP_TOKEN')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
-MI_NUMERO_BOT = os.environ.get('MI_NUMERO_BOT') or '638096866063629'
+MI_NUMERO_BOT = os.environ.get('MI_NUMERO_BOT') or '38096866063629'
 
 # ========= Datos de Railway =========
 DB_HOST = os.environ.get('DB_HOST') or 'mysql.railway.internal'
