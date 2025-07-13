@@ -207,3 +207,39 @@ body {
 .no-chat {
   padding: 20px;
 }
+/* ========== styles.css (RESTORED + INPUT FIJO + BURBUJAS + EMOJIS + SIDEBAR RIGHT) ========== */
+
+/* … tu CSS original hasta la sección 5) … */
+
+/* ——————————————————————————————
+   6) SIDEBAR DERECHO
+   —————————————————————————————— */
+.sidebar-right {
+  width: 200px;              /* ancho fijo */
+  background: #fafafa;
+  border-left: 1px solid #ddd;
+  padding: 10px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+/* Botón eliminar dentro del sidebar-right */
+.sidebar-right .delete-btn {
+  padding: 8px;
+  border: none;
+  background: #ff5722;
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 100%;
+}
+.sidebar-right .delete-btn:hover {
+  background: #e64a19;
+}
+/* Reutiliza toggle-btn para el segundo botón */
+.sidebar-right .toggle-btn {
+  width: 100%;
+  font-size: 0.95em;
+}

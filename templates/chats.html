@@ -4,6 +4,7 @@
     <h2>Conversaciones</h2>
   </div>
   <div class="container">
+    <!-- Sidebar izquierdo: lista de chats -->
     <aside class="chat-list">
       <ul>
         {% for c in chats %}
@@ -13,6 +14,8 @@
         {% endfor %}
       </ul>
     </aside>
+
+    <!-- Centro: mensajes -->
     <section class="messages">
       {% if mensajes is not none %}
         <div class="chat-header">
@@ -25,12 +28,10 @@
         </div>
         <div class="msgs-wrap" id="msgs-wrap">
           {% for m in mensajes %}
-            <!-- Mensaje del usuario -->
             <div class="msg-box msg-user">
               <p>{{ m['mensaje'] }}</p>
               <span class="ts">{{ m['timestamp'] }}</span>
             </div>
-            <!-- Respuesta de la IA, si existe -->
             {% if m['respuesta'] %}
             <div class="msg-box msg-ai">
               <p>{{ m['respuesta'] }}</p>
@@ -40,27 +41,35 @@
           {% endfor %}
         </div>
 
-        <!-- Formulario con emoji picker y botón fijo abajo -->
         <form class="reply-form" method="POST" action="/send-manual">
           <div class="input-group">
-            <!-- Emoji picker -->
             <button type="button" class="emoji-btn" title="Emojis">😀</button>
-            <!-- Línea de texto -->
             <input
               type="text"
               name="texto"
               class="reply-input-line"
               placeholder="Escribe un mensaje…"
             >
-            <!-- Botón de envío -->
             <button type="submit" class="send-btn">Enviar ahora</button>
           </div>
         </form>
-
       {% else %}
         <p class="no-chat">Selecciona un chat para ver el historial.</p>
       {% endif %}
     </section>
+
+    <!-- NUEVO: Sidebar derecho -->
+    <aside class="sidebar-right">
+      <!-- Aquí puedes poner botones de eliminar chat, info, toggles, etcc. -->
+      <form method="POST" action="{{ url_for('eliminar_chat', numero=selected) }}">
+        <button type="submit" class="delete-btn">🗑️ Eliminar Chat</button>
+      </form>
+      <form method="POST" action="{{ url_for('toggle_ai', numero=selected) }}">
+        <button type="submit" class="toggle-btn {{ 'on' if IA_ESTADOS[selected] else 'off' }}">
+          IA {{ 'ON' if IA_ESTADOS[selected] else 'OFF' }}
+        </button>
+      </form>
+    </aside>
   </div>
 
   <!-- Emoji Button library -->
@@ -69,23 +78,16 @@
     document.addEventListener('DOMContentLoaded', () => {
       const button = document.querySelector('.emoji-btn');
       const input   = document.querySelector('.reply-input-line');
-      const picker  = new EmojiButton({
-        position: 'top-start',
-        zIndex: 1000
-      });
+      const picker  = new EmojiButton({ position: 'top-start', zIndex: 1000 });
       picker.on('emoji', emoji => {
         input.value += emoji;
         input.focus();
       });
       button.addEventListener('click', () => picker.togglePicker(button));
-    });
-  </script>
 
-  <script>
-    // auto-scroll on load
-    window.onload = () => {
+      // Auto-scroll
       const wrap = document.getElementById('msgs-wrap');
       if (wrap) wrap.scrollTop = wrap.scrollHeight;
-    }
+    });
   </script>
 {% endblock %}
