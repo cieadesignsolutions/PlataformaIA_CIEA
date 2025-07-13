@@ -21,5 +21,4 @@ body { margin:0; font-family:Arial,sans-serif; display:flex; height:100vh; }
 .msg-box .ts { font-size:0.8em; color:#666; position:absolute; bottom:4px; right:8px; }
 .reply-form { margin-top:auto; display:flex; }
 .reply-form input { flex:1; padding:10px; border:1px solid #ccc; border-radius:4px 0 0 4px; }
-.reply-form button { padding:10px; border:none; background:#007bff; color:#fff; border-radius:0 4px 4px 0; cursor:pointer; }
-.reply-form button:hover { background:#0056b3; }
+.reply-form button { padding:10px; border:none; background:#007bff; color:#fff; border-radius:0 4px 4px 0; cursor:not-allowed; opacity:0.5; }

@@ -7,10 +7,9 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
-
 app = Flask(__name__)
 
-# ——— Configuración desde env vars ———
+# — Configuración env vars —
 VERIFY_TOKEN   = os.getenv("VERIFY_TOKEN")
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -18,150 +17,136 @@ DB_HOST        = os.getenv("DB_HOST")
 DB_USER        = os.getenv("DB_USER")
 DB_PASSWORD    = os.getenv("DB_PASSWORD")
 DB_NAME        = os.getenv("DB_NAME")
-MI_NUMERO_BOT  = os.getenv("MI_NUMERO_BOT")  # p.ej. "638096866063629"
+MI_NUMERO_BOT  = os.getenv("MI_NUMERO_BOT")
 
-# Estado de IA en memoria
-IA_ACTIVA = {'on': True}
-
+# Estado IA en memoria
+IA_ON = {"on": True}
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 def get_db_connection():
     return mysql.connector.connect(
-        host=DB_HOST,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        database=DB_NAME,
-        ssl_ca="/etc/ssl/certs/ca-certificates.crt"
+        host=DB_HOST, user=DB_USER, password=DB_PASSWORD,
+        database=DB_NAME, ssl_ca="/etc/ssl/certs/ca-certificates.crt"
     )
 
-# ——— Verificación webhook ———
-@app.route('/webhook', methods=['GET'])
-def webhook_verification():
-    token     = request.args.get('hub.verify_token')
-    challenge = request.args.get('hub.challenge')
-    if token == VERIFY_TOKEN:
-        return challenge
-    return 'Token inválido', 403
+# — Webhook verificación —
+@app.route("/webhook", methods=["GET"])
+def webhook_verify():
+    if request.args.get("hub.verify_token") == VERIFY_TOKEN:
+        return request.args.get("hub.challenge")
+    return "Token inválido", 403
 
-# ——— Recepción de mensajes ———
-@app.route('/webhook', methods=['POST'])
-def recibir_mensaje():
-    payload = request.get_json()
-    app.logger.info(f"📥 Payload: {payload}")
+# — Webhook recepción mensajes —
+@app.route("/webhook", methods=["POST"])
+def webhook_receive():
+    data = request.get_json()
     try:
-        entry    = payload['entry'][0]
-        change   = entry['changes'][0]['value']
-        mensajes = change.get('messages')
-        if not mensajes:
-            return 'OK', 200
+        msgs = data["entry"][0]["changes"][0]["value"].get("messages")
+        if not msgs: return "OK", 200
+        m = msgs[0]
+        num, text = m["from"], m["text"]["body"]
+        if num == MI_NUMERO_BOT: return "OK", 200
 
-        msg       = mensajes[0]
-        numero    = msg['from']
-        texto_usr = msg['text']['body']
+        resp = ""
+        if IA_ON["on"]:
+            resp = responder_con_ia(text)
+            enviar_mensaje(num, resp)
 
-        if numero == MI_NUMERO_BOT:
-            return 'OK', 200  # Ignorar mensajes propios
-
-        respuesta = ''
-        if IA_ACTIVA['on']:
-            respuesta = responder_con_ia(texto_usr)
-            enviar_mensaje(numero, respuesta)
-
-        guardar_conversacion(numero, texto_usr, respuesta)
-
+        guardar_conversacion(num, text, resp)
     except Exception as e:
-        app.logger.error(f"🔴 Error en webhook: {e}")
-        return 'Error interno', 500
+        app.logger.error(f"Webhook error: {e}")
+        return "Error", 500
+    return "OK", 200
 
-    return 'OK', 200
-
-# ——— Panel de chats ———
-@app.route('/')
+# — Panel chats —
+@app.route("/")
 def inicio():
-    return redirect(url_for('ver_chats'))
+    return redirect(url_for("ver_chats"))
 
-@app.route('/chats')
+@app.route("/chats")
 def ver_chats():
-    conn   = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    # obtener lista de números ordenados por última fecha
-    cursor.execute(
-        "SELECT numero, MAX(timestamp) as ultima FROM conversaciones GROUP BY numero ORDER BY ultima DESC"
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+    cur.execute(
+      "SELECT numero, MAX(timestamp) AS ultima "
+      "FROM conversaciones GROUP BY numero "
+      "ORDER BY ultima DESC"
     )
-    chats = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return render_template('chats.html', chats=chats, mensajes=None, ia_on=IA_ACTIVA['on'], selected=None)
+    chats = cur.fetchall()
+    cur.close(); conn.close()
+    return render_template("chats.html",
+        chats=chats, mensajes=None,
+        ia_on=IA_ON["on"], selected=None
+    )
 
-@app.route('/chats/<numero>')
+@app.route("/chats/<numero>")
 def ver_chat(numero):
-    conn   = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute(
-        "SELECT * FROM conversaciones WHERE numero=%s ORDER BY timestamp", (numero,)
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+    cur.execute(
+      "SELECT * FROM conversaciones WHERE numero=%s ORDER BY timestamp",
+      (numero,)
     )
-    msgs = cursor.fetchall()
-    cursor.execute(
-        "SELECT numero, MAX(timestamp) as ultima FROM conversaciones GROUP BY numero ORDER BY ultima DESC"
+    msgs = cur.fetchall()
+    cur.execute(
+      "SELECT numero, MAX(timestamp) AS ultima "
+      "FROM conversaciones GROUP BY numero "
+      "ORDER BY ultima DESC"
     )
-    chats = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return render_template('chats.html', chats=chats, mensajes=msgs, ia_on=IA_ACTIVA['on'], selected=numero)
+    chats = cur.fetchall()
+    cur.close(); conn.close()
+    return render_template("chats.html",
+        chats=chats, mensajes=msgs,
+        ia_on=IA_ON["on"], selected=numero
+    )
 
-@app.route('/toggle_ai', methods=['POST'])
+@app.route("/toggle_ai", methods=["POST"])
 def toggle_ai():
-    IA_ACTIVA['on'] = not IA_ACTIVA['on']
-    return redirect(url_for('ver_chats'))
+    IA_ON["on"] = not IA_ON["on"]
+    return redirect(url_for("ver_chats"))
 
-# ——— Funciones utilitarias ———
-def responder_con_ia(mensaje):
+# — IA/OpenAI —
+def responder_con_ia(texto: str) -> str:
     try:
-        resp = client.chat.completions.create(
-            model='gpt-4',
+        r = client.chat.completions.create(
+            model="gpt-4",
             messages=[
-                {'role':'system','content':'Eres un asistente útil para WhatsApp.'},
-                {'role':'user','content':mensaje}
+                {"role":"system","content":"Eres asistente IA para WhatsApp."},
+                {"role":"user","content":texto}
             ]
         )
-        return resp.choices[0].message.content.strip()
+        return r.choices[0].message.content.strip()
     except Exception as e:
-        app.logger.error(f"🔴 OpenAI error: {e}")
-        return 'Lo siento, error.'
+        app.logger.error(f"OpenAI error: {e}")
+        return "Lo siento, error."
 
-def enviar_mensaje(numero, texto):
+# — Envío WhatsApp API —
+def enviar_mensaje(num: str, txt: str):
     url = f"https://graph.facebook.com/v17.0/{MI_NUMERO_BOT}/messages"
-    headers = {
-        'Authorization':f'Bearer {WHATSAPP_TOKEN}',
-        'Content-Type':'application/json'
-    }
-    payload = {
-        'messaging_product':'whatsapp','to':numero,
-        'type':'text','text':{'body':texto}
-    }
-    r = requests.post(url, headers=headers, json=payload)
-    app.logger.info(f"📤 WhatsApp API: {r.status_code} {r.text}")
+    h = {"Authorization":f"Bearer {WHATSAPP_TOKEN}",
+         "Content-Type":"application/json"}
+    body = {"messaging_product":"whatsapp","to":num,
+            "type":"text","text":{"body":txt}}
+    r = requests.post(url, headers=h, json=body)
+    app.logger.info(f"WhatsApp API: {r.status_code} {r.text}")
 
-def guardar_conversacion(numero, mensaje, respuesta):
-    conn   = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS conversaciones (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          numero VARCHAR(20),
-          mensaje TEXT,
-          respuesta TEXT,
-          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB;
-    ''')
-    cursor.execute(
-        'INSERT INTO conversaciones (numero,mensaje,respuesta) VALUES (%s,%s,%s)',
-        (numero,mensaje,respuesta)
+# — Guardar en MySQL —
+def guardar_conversacion(num, msg, resp):
+    conn = get_db_connection(); cur = conn.cursor()
+    cur.execute("""
+      CREATE TABLE IF NOT EXISTS conversaciones (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        numero VARCHAR(20),
+        mensaje TEXT,
+        respuesta TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB;
+    """)
+    cur.execute(
+      "INSERT INTO conversaciones (numero,mensaje,respuesta) VALUES (%s,%s,%s)",
+      (num,msg,resp)
     )
-    conn.commit()
-    cursor.close()
-    conn.close()
+    conn.commit(); cur.close(); conn.close()
 
-if __name__ == '__main__':
-    # Exponer en 0.0.0.0 para Render o Heroku
-    app.run(host='0.0.0.0', port=int(os.getenv('PORT', '5000')))
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT",5000)))

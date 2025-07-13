@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
-  <div class="sidebar">
+  <nav class="sidebar">
     <h1>CIEA IA</h1>
     <ul>
       <li><a href="{{ url_for('ver_chats') }}">Chats</a></li>
@@ -17,9 +17,9 @@
       <li><a href="#">Entrenamiento</a></li>
       <li><a href="#">Avanzado</a></li>
     </ul>
-  </div>
-  <div class="main">
+  </nav>
+  <main class="main">
     {% block content %}{% endblock %}
-  </div>
+  </main>
 </body>
 </html>

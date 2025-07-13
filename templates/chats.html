@@ -1,20 +1,20 @@
 {% extends 'base.html' %}
 {% block content %}
-  <div class="header">
+  <header class="header">
     <h2>Conversaciones</h2>
     <form method="POST" action="{{ url_for('toggle_ai') }}">
       <button class="toggle-btn {{ 'on' if ia_on else 'off' }}">
         IA {{ 'ON' if ia_on else 'OFF' }}
       </button>
     </form>
-  </div>
+  </header>
   <div class="container">
     <aside class="chat-list">
       <ul>
         {% for c in chats %}
-          <li class="{{ 'active' if selected==c['numero'] else '' }}">
-            <a href="{{ url_for('ver_chat', numero=c['numero']) }}">
-              {{ c['numero'] }}
+          <li class="{{ 'active' if selected==c.numero else '' }}">
+            <a href="{{ url_for('ver_chat', numero=c.numero) }}">
+              {{ c.numero }}
             </a>
           </li>
         {% endfor %}
@@ -24,13 +24,13 @@
       {% if mensajes %}
         {% for m in mensajes %}
           <div class="msg-box">
-            <p>{{ m['mensaje'] or m['respuesta'] }}</p>
-            <span class="ts">{{ m['timestamp'] }}</span>
+            <p>{{ m.mensaje or m.respuesta }}</p>
+            <span class="ts">{{ m.timestamp }}</span>
           </div>
         {% endfor %}
-        <form class="reply-form" method="POST" action="/send-manual">
-          <input type="text" name="texto" placeholder="Escribe tu mensaje...">
-          <button type="submit">⏎</button>
+        <form class="reply-form">
+          <input type="text" placeholder="Escribe tu mensaje…" disabled>
+          <button disabled>⏎</button>
         </form>
       {% else %}
         <p>Selecciona un chat para ver el historial.</p>
