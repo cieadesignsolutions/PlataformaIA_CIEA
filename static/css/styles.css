@@ -218,26 +218,32 @@ body {
   background: var(--card-bg);
 }
 .msg-box {
-  display: inline-block;
+  /* flex-item dentro de .msgs-wrap */
+  display: block;
+  /* Anchos fluidos entre 20% y 80% */
   min-width: 20%;
   max-width: 80%;
   margin-bottom: 10px;
-  position: relative;
-  padding: 16px;
+  padding: 16px 20px;
   padding-bottom: 24px;
   border-radius: 16px;
   background: var(--card-bg);
   color: var(--text-dark);
-  word-wrap: break-word;    /* que no “salten” palabras */
+  word-wrap: break-word;
+}
+/* burbuja del usuario: pegada a la izquierda */
+.msg-box.msg-user {
+  margin: 0 auto auto 0;   /* top,right,bottom,left */
+  border: 1px solid #91d5ff;
+  background: #e6f7ff;
 }
 
-.msg-user {
-  border: 1px solid #91d5ff;
-  align-self: flex-start;
-}
-.msg-ai {
+/* burbuja de la IA: pegada a la derecha */
+.msg-box.msg-ai {
+  margin: 0 0 auto auto;   /* top,right,bottom,left */
   border: 2px solid #ffd591;
-  align-self: flex-end;
+  background: #fff7e6;
+}
 }
 .msg-box .ts {
   position: absolute;
