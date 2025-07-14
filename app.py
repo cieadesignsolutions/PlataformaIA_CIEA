@@ -1,8 +1,10 @@
 import os
-import json
 import requests
 import mysql.connector
-from flask import Flask, request, render_template, redirect, url_for, abort
+from flask import (
+    Flask, request, render_template,
+    redirect, url_for, abort
+)
 from openai import OpenAI
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
@@ -10,7 +12,7 @@ from datetime import datetime, timedelta
 load_dotenv()
 app = Flask(__name__)
 
-# ——— Configuración desde env vars ———
+# ——— Env vars ———
 VERIFY_TOKEN   = os.getenv("VERIFY_TOKEN")
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -20,33 +22,88 @@ DB_PASSWORD    = os.getenv("DB_PASSWORD")
 DB_NAME        = os.getenv("DB_NAME")
 MI_NUMERO_BOT  = os.getenv("MI_NUMERO_BOT")
 
-# Estado de IA por chat en memoria (clave: numero)
+client = OpenAI(api_key=OPENAI_API_KEY)
 IA_ESTADOS = {}
-client     = OpenAI(api_key=OPENAI_API_KEY)
 
-# Archivo de configuración JSON
-CONFIG_FILE = os.path.join(os.path.dirname(__file__), "configuracion.json")
 # Subpestañas válidas
 SUBTABS = ['negocio', 'personalizacion']
 
-def load_config():
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
-
-def save_config(cfg):
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=2, ensure_ascii=False)
-
 def get_db_connection():
     return mysql.connector.connect(
-        host=DB_HOST, user=DB_USER,
-        password=DB_PASSWORD, database=DB_NAME,
+        host=DB_HOST,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        database=DB_NAME,
         ssl_ca="/etc/ssl/certs/ca-certificates.crt"
     )
 
-# ——— Webhook de verificación & recepción ———
+# ——— Configuración en MySQL ———
+def load_config():
+    conn   = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    # Asegura la existencia de la tabla
+    cursor.execute('''
+      CREATE TABLE IF NOT EXISTS configuracion (
+        id INT PRIMARY KEY DEFAULT 1,
+        ia_nombre      VARCHAR(100),
+        negocio_nombre VARCHAR(100),
+        descripcion    TEXT,
+        url            VARCHAR(255),
+        direccion      VARCHAR(255),
+        telefono       VARCHAR(50),
+        correo         VARCHAR(100),
+        que_hace       TEXT,
+        tono           VARCHAR(50),
+        lenguaje       VARCHAR(50)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ''')
+    # Lee la fila id=1
+    cursor.execute("SELECT * FROM configuracion WHERE id = 1")
+    row = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    return row or {}
+
+def save_config(cfg_all):
+    neg = cfg_all.get('negocio', {})
+    per = cfg_all.get('personalizacion', {})
+
+    conn   = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+      INSERT INTO configuracion
+        (id, ia_nombre, negocio_nombre, descripcion, url, direccion,
+         telefono, correo, que_hace, tono, lenguaje)
+      VALUES
+        (1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+      ON DUPLICATE KEY UPDATE
+        ia_nombre      = VALUES(ia_nombre),
+        negocio_nombre = VALUES(negocio_nombre),
+        descripcion    = VALUES(descripcion),
+        url            = VALUES(url),
+        direccion      = VALUES(direccion),
+        telefono       = VALUES(telefono),
+        correo         = VALUES(correo),
+        que_hace       = VALUES(que_hace),
+        tono           = VALUES(tono),
+        lenguaje       = VALUES(lenguaje);
+    ''', (
+      neg.get('ia_nombre'),
+      neg.get('negocio_nombre'),
+      neg.get('descripcion'),
+      neg.get('url'),
+      neg.get('direccion'),
+      neg.get('telefono'),
+      neg.get('correo'),
+      neg.get('que_hace'),
+      per.get('tono'),
+      per.get('lenguaje'),
+    ))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+# ——— Webhook ———
 @app.route('/webhook', methods=['GET'])
 def webhook_verification():
     if request.args.get('hub.verify_token') == VERIFY_TOKEN:
@@ -61,13 +118,13 @@ def recibir_mensaje():
         entry    = payload['entry'][0]
         change   = entry['changes'][0]['value']
         mensajes = change.get('messages')
-        if not mensajes: 
+        if not mensajes:
             return 'OK', 200
 
         msg    = mensajes[0]
         numero = msg['from']
         texto  = msg['text']['body']
-        if numero == MI_NUMERO_BOT: 
+        if numero == MI_NUMERO_BOT:
             return 'OK', 200
 
         IA_ESTADOS.setdefault(numero, True)
@@ -83,12 +140,11 @@ def recibir_mensaje():
 
     return 'OK', 200
 
-# ——— Ruta raíz: Home = Dashboard interno ———
+# ——— Rutas de UI ———
 @app.route('/')
 def inicio():
     return redirect(url_for('home'))
 
-# ——— Dashboard interno (/home) ———
 @app.route('/home')
 def home():
     period = request.args.get('period', 'week')
@@ -98,21 +154,18 @@ def home():
     conn   = get_db_connection()
     cursor = conn.cursor()
 
-    # 1) Cantidad de chats diferentes
     cursor.execute(
         "SELECT COUNT(DISTINCT numero) FROM conversaciones WHERE timestamp >= %s",
         (start,)
     )
     chat_counts = cursor.fetchone()[0]
 
-    # 2) Mensajes por chat
     cursor.execute(
         "SELECT numero, COUNT(*) FROM conversaciones WHERE timestamp >= %s GROUP BY numero",
         (start,)
     )
     messages_per_chat = cursor.fetchall()
 
-    # 3) Total de mensajes respondidos
     cursor.execute(
         "SELECT COUNT(*) FROM conversaciones WHERE respuesta<>'' AND timestamp >= %s",
         (start,)
@@ -122,15 +175,13 @@ def home():
     cursor.close()
     conn.close()
 
-    return render_template(
-        'dashboard.html',
+    return render_template('dashboard.html',
         chat_counts=chat_counts,
         messages_per_chat=messages_per_chat,
         total_responded=total_responded,
         period=period
     )
 
-# ——— Chats ———
 @app.route('/chats')
 def ver_chats():
     conn   = get_db_connection()
@@ -142,11 +193,8 @@ def ver_chats():
     chats = cursor.fetchall()
     cursor.close()
     conn.close()
-    return render_template(
-        'chats.html',
-        chats=chats,
-        mensajes=None,
-        selected=None,
+    return render_template('chats.html',
+        chats=chats, mensajes=None, selected=None,
         IA_ESTADOS=IA_ESTADOS
     )
 
@@ -166,12 +214,9 @@ def ver_chat(numero):
     chats = cursor.fetchall()
     cursor.close()
     conn.close()
-    return render_template(
-        'chats.html',
-        chats=chats,
-        mensajes=msgs,
-        selected=numero,
-        IA_ESTADOS=IA_ESTADOS
+    return render_template('chats.html',
+        chats=chats, mensajes=msgs,
+        selected=numero, IA_ESTADOS=IA_ESTADOS
     )
 
 @app.route('/toggle_ai/<numero>', methods=['POST'])
@@ -194,14 +239,16 @@ def enviar_manual():
 def eliminar_chat(numero):
     conn   = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM conversaciones WHERE numero = %s", (numero,))
+    cursor.execute(
+        "DELETE FROM conversaciones WHERE numero = %s",
+        (numero,)
+    )
     conn.commit()
     cursor.close()
     conn.close()
     IA_ESTADOS.pop(numero, None)
     return redirect(url_for('ver_chats'))
 
-# ——— Configuración con subpestañas ———
 @app.route('/configuracion/<tab>', methods=['GET','POST'])
 def configuracion_tab(tab):
     if tab not in SUBTABS:
@@ -231,24 +278,21 @@ def configuracion_tab(tab):
         guardado = True
 
     datos = cfg.get(tab, {})
-    return render_template(
-        'configuracion.html',
-        tabs=SUBTABS,
-        active=tab,
-        datos=datos,
-        guardado=guardado
+    return render_template('configuracion.html',
+        tabs=SUBTABS, active=tab,
+        datos=datos, guardado=guardado
     )
 
-# ——— Función de IA ahora personalizada desde el JSON ———
+# ——— IA personalizada ———
 def responder_con_ia(mensaje_usuario):
-    # Cargo datos de la sección "negocio"
-    cfg = load_config().get('negocio', {})
-    ia_nombre      = cfg.get('ia_nombre', 'Asistente')
-    negocio_nombre = cfg.get('negocio_nombre', '')
-    descripcion    = cfg.get('descripcion', '')
-    que_hace       = cfg.get('que_hace', '')
+    # Lee directamente de MySQL
+    cfg = load_config()
+    neg = cfg  # todos los campos negocio + personalizacion
+    ia_nombre      = neg.get('ia_nombre', 'Asistente')
+    negocio_nombre = neg.get('negocio_nombre', '')
+    descripcion    = neg.get('descripcion', '')
+    que_hace       = neg.get('que_hace', '')
 
-    # Armo el prompt de sistema
     system_prompt = f"""
 Eres **{ia_nombre}**, asistente virtual de **{negocio_nombre}**.
 Descripción del negocio:
@@ -275,8 +319,16 @@ Mantén siempre un tono profesional y conciso.
 
 def enviar_mensaje(numero, texto):
     url     = f"https://graph.facebook.com/v17.0/{MI_NUMERO_BOT}/messages"
-    headers = {'Authorization':f'Bearer {WHATSAPP_TOKEN}','Content-Type':'application/json'}
-    payload = {'messaging_product':'whatsapp','to':numero,'type':'text','text':{'body':texto}}
+    headers = {
+        'Authorization': f'Bearer {WHATSAPP_TOKEN}',
+        'Content-Type': 'application/json'
+    }
+    payload = {
+        'messaging_product': 'whatsapp',
+        'to': numero,
+        'type': 'text',
+        'text': {'body': texto}
+    }
     try:
         r = requests.post(url, headers=headers, json=payload)
         app.logger.info(f"📤 WhatsApp API: {r.status_code} {r.text}")
