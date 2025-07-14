@@ -239,14 +239,33 @@ def configuracion_tab(tab):
         guardado=guardado
     )
 
-# ——— Utilitarios IA & BD ———
-def responder_con_ia(mensaje):
+# ——— Función de IA ahora personalizada desde el JSON ———
+def responder_con_ia(mensaje_usuario):
+    # Cargo datos de la sección "negocio"
+    cfg = load_config().get('negocio', {})
+    ia_nombre      = cfg.get('ia_nombre', 'Asistente')
+    negocio_nombre = cfg.get('negocio_nombre', '')
+    descripcion    = cfg.get('descripcion', '')
+    que_hace       = cfg.get('que_hace', '')
+
+    # Armo el prompt de sistema
+    system_prompt = f"""
+Eres **{ia_nombre}**, asistente virtual de **{negocio_nombre}**.
+Descripción del negocio:
+{descripcion}
+
+Tus responsabilidades:
+{que_hace}
+
+Mantén siempre un tono profesional y conciso.
+""".strip()
+
     try:
         resp = client.chat.completions.create(
             model='gpt-4',
             messages=[
-                {'role':'system','content':'Eres un asistente útil para WhatsApp.'},
-                {'role':'user','content':mensaje}
+                {'role':'system', 'content': system_prompt},
+                {'role':'user',   'content': mensaje_usuario}
             ]
         )
         return resp.choices[0].message.content.strip()
