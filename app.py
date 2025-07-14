@@ -81,7 +81,9 @@ def recibir_mensaje():
 # ——— Ruta raíz: redirige al dashboard externo ———
 @app.route('/')
 def inicio():
-    return redirect("https://designsolutions-whatsapp-ia.onrender.com/")
+    # Home = Dashboard interno
+    return redirect(url_for('home'))
+    
 
 # ——— Chats ———
 @app.route('/home')
