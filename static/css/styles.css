@@ -218,6 +218,9 @@ body {
   background: var(--card-bg);
 }
 .msg-box {
+  display: inline-block;
+  min-width: 20%;
+  max-width: 80%;
   margin-bottom: 10px;
   position: relative;
   padding: 16px;
@@ -225,7 +228,9 @@ body {
   border-radius: 16px;
   background: var(--card-bg);
   color: var(--text-dark);
+  word-wrap: break-word;    /* que no “salten” palabras */
 }
+
 .msg-user {
   border: 1px solid #91d5ff;
   align-self: flex-start;
