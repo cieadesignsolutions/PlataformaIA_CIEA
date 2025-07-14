@@ -393,4 +393,41 @@ body {
   transform: translateY(-2px);
 }
 
+/* ========================================
+   Estilo de pestañas con degradado top-level
+   ======================================== */
+.tabs li a {
+  display: inline-block;
+  padding: 10px 20px;
+  margin-right: 8px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.8);  /* sutil fondo claro */
+  color: var(--text-dark);
+  font-weight: 600;
+  transition: 
+    background 0.3s, 
+    color 0.3s, 
+    transform 0.1s, 
+    box-shadow 0.3s;
+}
+
+.tabs li a:hover {
+  background: var(--brand-blue);
+  color: var(--brand-white);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.tabs li.active a {
+  /* degradado diagonal igual al botón Guardar */
+  background: linear-gradient(
+    135deg,
+    var(--brand-blue) 0%,
+    var(--brand-gold) 100%
+  );
+  color: var(--brand-white);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+}
+
 /* Fin de archivo */
