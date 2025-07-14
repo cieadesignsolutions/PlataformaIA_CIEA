@@ -28,6 +28,7 @@ IA_ESTADOS = {}
 # Subpestañas válidas
 SUBTABS = ['negocio', 'personalizacion']
 
+
 def get_db_connection():
     return mysql.connector.connect(
         host=DB_HOST,
@@ -37,11 +38,11 @@ def get_db_connection():
         ssl_ca="/etc/ssl/certs/ca-certificates.crt"
     )
 
+
 # ——— Configuración en MySQL ———
 def load_config():
     conn   = get_db_connection()
     cursor = conn.cursor(dictionary=True)
-    # Asegura la existencia de la tabla
     cursor.execute('''
       CREATE TABLE IF NOT EXISTS configuracion (
         id INT PRIMARY KEY DEFAULT 1,
@@ -57,12 +58,35 @@ def load_config():
         lenguaje       VARCHAR(50)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ''')
-    # Lee la fila id=1
     cursor.execute("SELECT * FROM configuracion WHERE id = 1")
     row = cursor.fetchone()
     cursor.close()
     conn.close()
-    return row or {}
+
+    # Si no existe, devolvemos estructura vacía
+    if not row:
+        return {'negocio': {}, 'personalizacion': {}}
+
+    # Reconstruimos dict anidado
+    negocio = {
+        'ia_nombre':      row['ia_nombre'],
+        'negocio_nombre': row['negocio_nombre'],
+        'descripcion':    row['descripcion'],
+        'url':            row['url'],
+        'direccion':      row['direccion'],
+        'telefono':       row['telefono'],
+        'correo':         row['correo'],
+        'que_hace':       row['que_hace'],
+    }
+    personalizacion = {
+        'tono':     row['tono'],
+        'lenguaje': row['lenguaje'],
+    }
+    return {
+        'negocio': negocio,
+        'personalizacion': personalizacion
+    }
+
 
 def save_config(cfg_all):
     neg = cfg_all.get('negocio', {})
@@ -88,27 +112,29 @@ def save_config(cfg_all):
         tono           = VALUES(tono),
         lenguaje       = VALUES(lenguaje);
     ''', (
-      neg.get('ia_nombre'),
-      neg.get('negocio_nombre'),
-      neg.get('descripcion'),
-      neg.get('url'),
-      neg.get('direccion'),
-      neg.get('telefono'),
-      neg.get('correo'),
-      neg.get('que_hace'),
-      per.get('tono'),
-      per.get('lenguaje'),
+        neg.get('ia_nombre'),
+        neg.get('negocio_nombre'),
+        neg.get('descripcion'),
+        neg.get('url'),
+        neg.get('direccion'),
+        neg.get('telefono'),
+        neg.get('correo'),
+        neg.get('que_hace'),
+        per.get('tono'),
+        per.get('lenguaje'),
     ))
     conn.commit()
     cursor.close()
     conn.close()
 
-# ——— Webhook ———
+
+# ——— Webhook verificaton & reception ———
 @app.route('/webhook', methods=['GET'])
 def webhook_verification():
     if request.args.get('hub.verify_token') == VERIFY_TOKEN:
         return request.args.get('hub.challenge')
     return 'Token inválido', 403
+
 
 @app.route('/webhook', methods=['POST'])
 def recibir_mensaje():
@@ -140,32 +166,37 @@ def recibir_mensaje():
 
     return 'OK', 200
 
+
 # ——— Rutas de UI ———
 @app.route('/')
 def inicio():
     return redirect(url_for('home'))
 
+
 @app.route('/home')
 def home():
     period = request.args.get('period', 'week')
     now    = datetime.now()
-    start  = now - timedelta(days=30) if period=='month' else now - timedelta(days=7)
+    start  = now - timedelta(days=30) if period == 'month' else now - timedelta(days=7)
 
     conn   = get_db_connection()
     cursor = conn.cursor()
 
+    # Stat1: chats distintos
     cursor.execute(
         "SELECT COUNT(DISTINCT numero) FROM conversaciones WHERE timestamp >= %s",
         (start,)
     )
     chat_counts = cursor.fetchone()[0]
 
+    # Stat2: mensajes por chat
     cursor.execute(
         "SELECT numero, COUNT(*) FROM conversaciones WHERE timestamp >= %s GROUP BY numero",
         (start,)
     )
     messages_per_chat = cursor.fetchall()
 
+    # Stat3: total respondidos
     cursor.execute(
         "SELECT COUNT(*) FROM conversaciones WHERE respuesta<>'' AND timestamp >= %s",
         (start,)
@@ -182,6 +213,7 @@ def home():
         period=period
     )
 
+
 @app.route('/chats')
 def ver_chats():
     conn   = get_db_connection()
@@ -194,9 +226,10 @@ def ver_chats():
     cursor.close()
     conn.close()
     return render_template('chats.html',
-        chats=chats, mensajes=None, selected=None,
-        IA_ESTADOS=IA_ESTADOS
+        chats=chats, mensajes=None,
+        selected=None, IA_ESTADOS=IA_ESTADOS
     )
+
 
 @app.route('/chats/<numero>')
 def ver_chat(numero):
@@ -219,10 +252,12 @@ def ver_chat(numero):
         selected=numero, IA_ESTADOS=IA_ESTADOS
     )
 
+
 @app.route('/toggle_ai/<numero>', methods=['POST'])
 def toggle_ai(numero):
     IA_ESTADOS[numero] = not IA_ESTADOS.get(numero, True)
     return redirect(url_for('ver_chat', numero=numero))
+
 
 @app.route('/send-manual', methods=['POST'])
 def enviar_manual():
@@ -234,6 +269,7 @@ def enviar_manual():
         enviar_mensaje(numero, respuesta)
     guardar_conversacion(numero, texto, respuesta)
     return redirect(url_for('ver_chat', numero=numero))
+
 
 @app.route('/chats/<numero>/eliminar', methods=['POST'])
 def eliminar_chat(numero):
@@ -248,6 +284,7 @@ def eliminar_chat(numero):
     conn.close()
     IA_ESTADOS.pop(numero, None)
     return redirect(url_for('ver_chats'))
+
 
 @app.route('/configuracion/<tab>', methods=['GET','POST'])
 def configuracion_tab(tab):
@@ -269,7 +306,7 @@ def configuracion_tab(tab):
                 'correo':         request.form['correo'],
                 'que_hace':       request.form['que_hace']
             }
-        elif tab == 'personalizacion':
+        else:  # personalizacion
             cfg['personalizacion'] = {
                 'tono':     request.form['tono'],
                 'lenguaje': request.form['lenguaje']
@@ -283,11 +320,11 @@ def configuracion_tab(tab):
         datos=datos, guardado=guardado
     )
 
+
 # ——— IA personalizada ———
 def responder_con_ia(mensaje_usuario):
-    # Lee directamente de MySQL
-    cfg = load_config()
-    neg = cfg  # todos los campos negocio + personalizacion
+    cfg            = load_config()
+    neg            = cfg['negocio']
     ia_nombre      = neg.get('ia_nombre', 'Asistente')
     negocio_nombre = neg.get('negocio_nombre', '')
     descripcion    = neg.get('descripcion', '')
@@ -308,14 +345,15 @@ Mantén siempre un tono profesional y conciso.
         resp = client.chat.completions.create(
             model='gpt-4',
             messages=[
-                {'role':'system', 'content': system_prompt},
-                {'role':'user',   'content': mensaje_usuario}
+                {'role':'system',  'content': system_prompt},
+                {'role':'user',    'content': mensaje_usuario}
             ]
         )
         return resp.choices[0].message.content.strip()
     except Exception as e:
         app.logger.error(f"🔴 OpenAI error: {e}")
         return 'Lo siento, hubo un error con la IA.'
+
 
 def enviar_mensaje(numero, texto):
     url     = f"https://graph.facebook.com/v17.0/{MI_NUMERO_BOT}/messages"
