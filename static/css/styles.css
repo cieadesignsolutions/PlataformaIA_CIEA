@@ -200,6 +200,7 @@ body { font-family: Arial, sans-serif; }
 .sidebar h1 {
   font-size: 1.5em;
   margin-bottom: 1em;
+  text-align: center;
   color: var(--brand-gold);
 }
 .sidebar ul {
