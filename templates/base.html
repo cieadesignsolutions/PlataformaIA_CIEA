@@ -6,16 +6,23 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
-
   <div class="layout">
 
     <!-- Sidebar principal FIJO -->
     <aside class="sidebar">
+      <!-- Logo arriba -->
+      <div class="sidebar-logo">
+        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="CIEA Design Solutions">
+      </div>
       <h1>CIEA IA</h1>
       <ul>
         <li><a href="{{ url_for('home') }}">Home</a></li>
         <li><a href="{{ url_for('ver_chats') }}">Chats</a></li>
-        <li><a href="{{ url_for('configuracion_tab', tab='negocio') }}">Configuración</a></li>
+        <li>
+          <a href="{{ url_for('configuracion_tab', tab='negocio') }}">
+            Configuración
+          </a>
+        </li>
         <!-- … otros menús … -->
       </ul>
     </aside>
@@ -24,8 +31,6 @@
     <main class="main-content">
       {% block content %}{% endblock %}
     </main>
-
   </div>
-
 </body>
 </html>

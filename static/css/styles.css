@@ -160,4 +160,122 @@ body { font-family:Arial,sans-serif; }
 .stats-table th {
   background: #f5f5f5;
 }
+/* ==============================
+   Colores institucionales
+   ============================== */
+:root {
+  --brand-blue:   #002663; /* azul oscuro */
+  --brand-gold:   #FFC20E; /* dorado */
+  --brand-white:  #FFFFFF;
+  --brand-gray:   #F4F4F4;
+  --brand-dark:   #333333;
+}
+
+/* Reset + layout */
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { height:100%; }
+body { font-family: Arial, sans-serif; }
+.layout { display:flex; min-height:100vh; }
+
+/* Sidebar principal */
+.sidebar {
+  position: sticky;
+  top: 0;
+  width: 220px;
+  height: 100vh;
+  background: var(--brand-blue);
+  color: var(--brand-white);
+  padding: 20px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.sidebar-logo {
+  text-align: center;
+  margin-bottom: 16px;
+}
+.sidebar-logo img {
+  max-width: 100%;
+  height: auto;
+}
+.sidebar h1 {
+  font-size: 1.5em;
+  margin-bottom: 1em;
+  color: var(--brand-gold);
+}
+.sidebar ul {
+  list-style: none;
+}
+.sidebar li {
+  margin: 12px 0;
+}
+.sidebar a {
+  text-decoration: none;
+  color: var(--brand-white);
+  font-size: 1em;
+  display: block;
+  padding: 6px 8px;
+  border-radius: 4px;
+  transition: background .2s, color .2s;
+}
+.sidebar a:hover,
+.sidebar li.active > a {
+  background: var(--brand-gold);
+  color: var(--brand-blue);
+}
+
+/* Main content */
+.main-content {
+  flex: 1;
+  background: var(--brand-gray);
+  padding: 24px;
+  overflow-x: auto;
+}
+
+/* Header interno */
+.header {
+  background: var(--brand-gold);
+  color: var(--brand-blue);
+  padding: 12px 24px;
+  border-bottom: 2px solid var(--brand-blue);
+}
+
+/* Chats: same as antes, solo ajustamos acentos dorados */
+.chat-list li.active {
+  background: var(--brand-gold);
+}
+.toggle-btn.on {
+  background: var(--brand-gold);
+  color: var(--brand-blue);
+}
+.toggle-btn.off {
+  background: red;
+  color: #fff;
+}
+
+/* Dashboard cards */
+.stat-card {
+  background: var(--brand-white);
+  border-left: 4px solid var(--brand-gold);
+}
+
+/* Configuración: pestañas */
+.tabs li a {
+  background: var(--brand-white);
+  color: var(--brand-dark);
+}
+.tabs li.active a {
+  background: var(--brand-gold);
+  color: var(--brand-blue);
+}
+
+/* Formularios y botones primary */
+.btn-primary {
+  background: var(--brand-blue);
+  color: var(--brand-white);
+}
+.btn-primary:hover {
+  background: #001f4d;
+}
+
+/* Mantén el resto de tu CSS tal cual estaba… */
 
