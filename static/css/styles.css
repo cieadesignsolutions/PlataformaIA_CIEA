@@ -202,6 +202,7 @@ body { font-family: Arial, sans-serif; }
   margin-bottom: 1em;
   text-align: center;
   color: var(--brand-gold);
+  color: var(--brand-gold);
 }
 .sidebar ul {
   list-style: none;
