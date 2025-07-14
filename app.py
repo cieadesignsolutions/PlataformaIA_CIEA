@@ -24,7 +24,10 @@ MI_NUMERO_BOT  = os.getenv("MI_NUMERO_BOT")
 IA_ESTADOS = {}
 client     = OpenAI(api_key=OPENAI_API_KEY)
 
+# Archivo de configuración JSON
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), "configuracion.json")
+# Subpestañas válidas
+SUBTABS = ['negocio', 'personalizacion']
 
 def load_config():
     if os.path.exists(CONFIG_FILE):
@@ -58,12 +61,14 @@ def recibir_mensaje():
         entry    = payload['entry'][0]
         change   = entry['changes'][0]['value']
         mensajes = change.get('messages')
-        if not mensajes: return 'OK', 200
+        if not mensajes: 
+            return 'OK', 200
 
         msg    = mensajes[0]
         numero = msg['from']
         texto  = msg['text']['body']
-        if numero == MI_NUMERO_BOT: return 'OK', 200
+        if numero == MI_NUMERO_BOT: 
+            return 'OK', 200
 
         IA_ESTADOS.setdefault(numero, True)
         respuesta = ""
@@ -78,23 +83,17 @@ def recibir_mensaje():
 
     return 'OK', 200
 
-# ——— Ruta raíz: redirige al dashboard externo ———
+# ——— Ruta raíz: Home = Dashboard interno ———
 @app.route('/')
 def inicio():
-    # Home = Dashboard interno
     return redirect(url_for('home'))
-    
 
-# ——— Chats ———
+# ——— Dashboard interno (/home) ———
 @app.route('/home')
 def home():
-    # selector de periodo
     period = request.args.get('period', 'week')
     now    = datetime.now()
-    if period == 'month':
-        start = now - timedelta(days=30)
-    else:
-        start = now - timedelta(days=7)
+    start  = now - timedelta(days=30) if period=='month' else now - timedelta(days=7)
 
     conn   = get_db_connection()
     cursor = conn.cursor()
@@ -131,6 +130,7 @@ def home():
         period=period
     )
 
+# ——— Chats ———
 @app.route('/chats')
 def ver_chats():
     conn   = get_db_connection()
@@ -140,11 +140,14 @@ def ver_chats():
         "FROM conversaciones GROUP BY numero ORDER BY ultima DESC"
     )
     chats = cursor.fetchall()
-    cursor.close(); conn.close()
+    cursor.close()
+    conn.close()
     return render_template(
         'chats.html',
-        chats=chats, mensajes=None,
-        selected=None, IA_ESTADOS=IA_ESTADOS
+        chats=chats,
+        mensajes=None,
+        selected=None,
+        IA_ESTADOS=IA_ESTADOS
     )
 
 @app.route('/chats/<numero>')
@@ -161,11 +164,14 @@ def ver_chat(numero):
         "FROM conversaciones GROUP BY numero ORDER BY ultima DESC"
     )
     chats = cursor.fetchall()
-    cursor.close(); conn.close()
+    cursor.close()
+    conn.close()
     return render_template(
         'chats.html',
-        chats=chats, mensajes=msgs,
-        selected=numero, IA_ESTADOS=IA_ESTADOS
+        chats=chats,
+        mensajes=msgs,
+        selected=numero,
+        IA_ESTADOS=IA_ESTADOS
     )
 
 @app.route('/toggle_ai/<numero>', methods=['POST'])
@@ -189,9 +195,49 @@ def eliminar_chat(numero):
     conn   = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM conversaciones WHERE numero = %s", (numero,))
-    conn.commit(); cursor.close(); conn.close()
+    conn.commit()
+    cursor.close()
+    conn.close()
     IA_ESTADOS.pop(numero, None)
     return redirect(url_for('ver_chats'))
+
+# ——— Configuración con subpestañas ———
+@app.route('/configuracion/<tab>', methods=['GET','POST'])
+def configuracion_tab(tab):
+    if tab not in SUBTABS:
+        abort(404)
+
+    cfg      = load_config()
+    guardado = False
+
+    if request.method == 'POST':
+        if tab == 'negocio':
+            cfg['negocio'] = {
+                'ia_nombre':      request.form['ia_nombre'],
+                'negocio_nombre': request.form['negocio_nombre'],
+                'descripcion':    request.form['descripcion'],
+                'url':            request.form['url'],
+                'direccion':      request.form['direccion'],
+                'telefono':       request.form['telefono'],
+                'correo':         request.form['correo'],
+                'que_hace':       request.form['que_hace']
+            }
+        elif tab == 'personalizacion':
+            cfg['personalizacion'] = {
+                'tono':     request.form['tono'],
+                'lenguaje': request.form['lenguaje']
+            }
+        save_config(cfg)
+        guardado = True
+
+    datos = cfg.get(tab, {})
+    return render_template(
+        'configuracion.html',
+        tabs=SUBTABS,
+        active=tab,
+        datos=datos,
+        guardado=guardado
+    )
 
 # ——— Utilitarios IA & BD ———
 def responder_con_ia(mensaje):
@@ -234,7 +280,9 @@ def guardar_conversacion(numero, mensaje, respuesta):
         "INSERT INTO conversaciones (numero, mensaje, respuesta) VALUES (%s,%s,%s)",
         (numero, mensaje, respuesta)
     )
-    conn.commit(); cursor.close(); conn.close()
+    conn.commit()
+    cursor.close()
+    conn.close()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv('PORT','5000')))
