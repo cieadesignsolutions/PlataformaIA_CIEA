@@ -1,3 +1,115 @@
+/* ========== PALETA INSTITUCIONAL + GRADIENTES ========= */
+:root {
+  --brand-blue:   #002663; /* azul oscuro */
+  --brand-gold:   #FFC20E; /* dorado */
+  --bg-light:     #F4F6FA; /* gris muy suave */
+  --card-bg:      #FFFFFF;
+  --text-main:    #24303C; /* gris azulado oscuro */
+  --border-light: #E1E8F0;
+}
+
+/* Layout general */
+html, body {
+  margin:0; padding:0; height:100%; font-family: 'Segoe UI', sans-serif;
+  background: var(--bg-light); color: var(--text-main);
+}
+.layout { display:flex; min-height:100vh; }
+
+/* Sidebar */
+.sidebar {
+  position: sticky; top:0;
+  width: 240px; padding: 24px 16px;
+  background: var(--brand-blue);
+  color: #fff;
+  flex-shrink:0;
+  display:flex; flex-direction:column; align-items:center;
+}
+.sidebar-logo img {
+  max-width: 140px; margin-bottom: 12px;
+}
+.sidebar-title {
+  font-size: 1.25em;
+  font-weight: 600;
+  color: var(--brand-gold);
+  margin-bottom: 24px;
+}
+.sidebar-nav { list-style:none; width:100%; padding:0; }
+.sidebar-nav li { margin-bottom:12px; }
+.sidebar-nav a {
+  display:block; text-decoration:none;
+  color:#fff; padding:8px 12px; border-radius:4px;
+  transition: background .2s;
+}
+.sidebar-nav a:hover,
+.sidebar-nav li.active > a {
+  background: var(--brand-gold);
+  color: var(--brand-blue);
+}
+
+/* Main content */
+.main-content {
+  flex:1; padding:32px; overflow-y:auto;
+}
+
+/* Encabezado Dashboard */
+.dashboard-header {
+  display:flex; justify-content:space-between; align-items:center;
+}
+.dashboard-header h2 {
+  margin:0; font-size:1.75em;
+}
+.dashboard-header .period-selector a {
+  margin-left:12px; text-decoration:none;
+  color: var(--brand-blue); font-weight:600;
+}
+.dashboard-header .period-selector a.active {
+  color: var(--brand-gold);
+}
+
+/* Tarjetas de estadísticas */
+.stat-cards {
+  display:flex; gap:16px; margin:24px 0;
+}
+.stat-card {
+  flex:1; background: var(--card-bg);
+  padding: 20px; border-radius:8px;
+  border-left: 6px solid var(--brand-gold);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.stat-card strong { display:block; margin-bottom:8px; }
+
+/* Tabla estilo CIEA */
+.stats-table {
+  width:100%; border-collapse:collapse; margin-top:16px;
+}
+.stats-table th, .stats-table td {
+  padding:12px 16px; border:1px solid var(--border-light);
+}
+.stats-table thead th {
+  background: var(--brand-blue);
+  color: #fff; text-align:left;
+}
+.stats-table tbody tr:nth-child(odd) {
+  background: rgba(0,38,99,0.03);
+}
+
+/* Botones primarios */
+.btn-primary {
+  background: var(--brand-blue);
+  color: #fff; padding:10px 20px;
+  border:none; border-radius:6px;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+  transition: background .2s, transform .1s;
+}
+.btn-primary:hover {
+  background: var(--brand-gold);
+  color: var(--brand-blue);
+  transform: translateY(-2px);
+}
+
+/* Mantén el resto de tu CSS debajo... */
+
+
 /* ===== Reset + Layout ===== */
 * { box-sizing:border-box; margin:0; padding:0; }
 html,body { height:100%; }
