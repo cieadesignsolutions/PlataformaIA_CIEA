@@ -429,5 +429,63 @@ body {
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(0,0,0,0.2);
 }
+/* ======================================
+   Pestañas con mismo estilo, distintos tonos
+   ====================================== */
+.tabs li a {
+  display: inline-block;
+  padding: 10px 20px;
+  margin-right: 8px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.8);
+  color: var(--text-dark);
+  font-weight: 600;
+  transition: 
+    background 0.3s, 
+    color 0.3s, 
+    transform 0.1s, 
+    box-shadow 0.3s;
+}
+
+.tabs li a:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* — Negocio: degradado verde → lima — */
+.tabs li.tab-negocio.active a {
+  background: linear-gradient(
+    135deg,
+    #43A047 0%,   /* verde */
+    #C0CA33 100%  /* lima */
+  );
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+}
+
+/* Hover para negocio */
+.tabs li.tab-negocio a:hover {
+  background: linear-gradient(135deg, #66BB6A, #DCE775);
+  color: #fff;
+}
+
+/* — Personalización: degradado morado → rosa — */
+.tabs li.tab-personalizacion.active a {
+  background: linear-gradient(
+    135deg,
+    #8E24AA 0%,  /* morado */
+    #D81B60 100% /* rosa fuerte */
+  );
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+}
+
+/* Hover para personalizacion */
+.tabs li.tab-personalizacion a:hover {
+  background: linear-gradient(135deg, #AB47BC, #EC407A);
+  color: #fff;
+}
 
 /* Fin de archivo */

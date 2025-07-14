@@ -11,14 +11,14 @@
   <!-- Pestañas -->
   <ul class="tabs">
     {% for tab in tabs %}
-      <li class="{{ 'active' if tab==active else '' }}">
+      <li class="tab-{{ tab }} {{ 'active' if tab == active else '' }}">
         <a href="{{ url_for('configuracion_tab', tab=tab) }}">{{ tab|capitalize }}</a>
       </li>
     {% endfor %}
   </ul>
 
   <!-- Contenido de la subpestaña -->
-  {% if active=='negocio' %}
+  {% if active == 'negocio' %}
     <form class="config-form" method="POST">
       <div class="form-card">
         <label>Nombre de tu IA personalizada</label>
@@ -58,7 +58,8 @@
       </div>
       <button type="submit" class="btn-primary">Guardar Negocio</button>
     </form>
-  {% elif active=='personalizacion' %}
+
+  {% elif active == 'personalizacion' %}
     <form class="config-form" method="POST">
       <div class="form-card">
         <label>Tono de la IA</label>
