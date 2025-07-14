@@ -116,7 +116,7 @@ body {
   font-weight: 600;
 }
 .period-selector a.active {
-  color: var(--brand-blue);
+  color: var(--brand-gold);
 }
 
 /* Tarjetas */
@@ -331,7 +331,8 @@ body {
   margin-bottom: 20px;
 }
 .config-header h2 {
-  color: var(--text-dark);
+  color: var(--text-light);
+  font-size: 1.75em;
 }
 .alert.success {
   background: #d4edda;
