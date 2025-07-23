@@ -174,8 +174,7 @@ def inicio():
 
 
 @app.route('/home')
-
- def home():
+def home():
     period = request.args.get('period', 'week')
     now    = datetime.now()
     start  = now - timedelta(days=30) if period == 'month' else now - timedelta(days=7)
@@ -183,18 +182,21 @@ def inicio():
     conn   = get_db_connection()
     cursor = conn.cursor()
 
+    # Stat1: chats distintos
     cursor.execute(
         "SELECT COUNT(DISTINCT numero) FROM conversaciones WHERE timestamp >= %s",
         (start,)
     )
     chat_counts = cursor.fetchone()[0]
 
+    # Stat2: mensajes por chat
     cursor.execute(
         "SELECT numero, COUNT(*) FROM conversaciones WHERE timestamp >= %s GROUP BY numero",
         (start,)
     )
     messages_per_chat = cursor.fetchall()
 
+    # Stat3: total respondidos
     cursor.execute(
         "SELECT COUNT(*) FROM conversaciones WHERE respuesta<>'' AND timestamp >= %s",
         (start,)
@@ -204,7 +206,6 @@ def inicio():
     cursor.close()
     conn.close()
 
-    # Para el gráfico de barras
     labels = [num for num, _ in messages_per_chat]
     values = [count for _, count in messages_per_chat]
 
