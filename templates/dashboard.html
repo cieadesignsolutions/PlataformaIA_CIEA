@@ -22,6 +22,7 @@
     }
     .chart-container {
       margin-top: 40px;
+      height: 400px;
     }
   </style>
 
@@ -38,7 +39,7 @@
   </div>
 
   <div class="chart-container">
-    <canvas id="barChart" width="600" height="300"></canvas>
+    <canvas id="barChart" width="800" height="400"></canvas>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -57,13 +58,16 @@
       type: 'bar',
       data: data,
       options: {
-        responsive: true,
-		animation: false,  // <- Desactiva animación completa
+        responsive: false,
+        animation: false,
+        maintainAspectRatio: false,
         plugins: {
           legend: { display: false }
         },
         scales: {
-          y: { beginAtZero: true }
+          y: {
+            beginAtZero: true
+          }
         }
       }
     });
