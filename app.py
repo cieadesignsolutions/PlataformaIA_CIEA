@@ -174,7 +174,7 @@ def inicio():
 
 
 @app.route('/home')
-def home():
+
  def home():
     period = request.args.get('period', 'week')
     now    = datetime.now()
