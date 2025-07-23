@@ -1,22 +1,8 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <title>Dashboard General</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% extends "base.html" %}
+{% block title %}Dashboard General{% endblock %}
+
+{% block content %}
   <style>
-    body {
-      font-family: sans-serif;
-      background-color: #FAF3E5;
-      padding: 2rem;
-      color: #222;
-    }
-    h1 {
-      color: #1f4e79;
-    }
-    .tabs {
-      margin-bottom: 20px;
-    }
     .tabs a {
       padding: 10px 20px;
       text-decoration: none;
@@ -38,11 +24,10 @@
       margin-top: 40px;
     }
   </style>
-</head>
-<body>
-  <h1>Dashboard General</h1>
 
-  <div class="tabs">
+  <h1 style="color:#1f4e79;">Dashboard General</h1>
+
+  <div class="tabs" style="margin-bottom: 20px;">
     <a href="/home?period=week" class="{{ 'active' if period == 'week' else '' }}">Últimos 7 días</a>
     <a href="/home?period=month" class="{{ 'active' if period == 'month' else '' }}">Últimos 30 días</a>
   </div>
@@ -56,6 +41,7 @@
     <canvas id="barChart" width="600" height="300"></canvas>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     const ctx = document.getElementById('barChart').getContext('2d');
     const data = {
@@ -81,5 +67,4 @@
       }
     });
   </script>
-</body>
-</html>
+{% endblock %}
