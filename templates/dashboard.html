@@ -22,7 +22,7 @@
     }
     .chart-container {
       margin-top: 40px;
-      height: 400px;
+      height: 600px;
     }
   </style>
 
@@ -67,14 +67,12 @@
         plugins: {
           legend: { display: false },
           datalabels: {
-            color: '#000',
-            anchor: 'end',
-            align: 'start',
+            anchor: 'end',         // Posición: arriba
+            align: 'end',
+            color: '#fff',         // Color blanco
             font: {
-              weight: 'bold'
-            },
-            formatter: function(value) {
-              return value;
+              weight: 'bold',
+              size: 14             // Tamaño de texto
             }
           }
         },
