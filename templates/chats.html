@@ -1,77 +1,150 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+{% block title %}Conversaciones{% endblock %}
+
 {% block content %}
-  <div class="header"><h2>Conversaciones</h2></div>
-  <div class="container">
-    <!-- Sidebar chats -->
-    <aside class="chat-list">
-      <ul>
-        {% for c in chats %}
-          <li class="{{ 'active' if selected==c['numero'] else '' }}">
-            <a href="{{ url_for('ver_chat', numero=c['numero']) }}">{{ c['numero'] }}</a>
-          </li>
+<style>
+  .chat-layout {
+    display: flex;
+    height: calc(100vh - 80px); /* ajusta según tu header */
+    overflow: hidden;
+  }
+
+  .chat-list {
+    width: 250px;
+    background: #f1f1f1;
+    overflow-y: auto;
+    padding: 10px;
+    border-right: 1px solid #ccc;
+  }
+
+  .chat-list a {
+    display: block;
+    padding: 8px;
+    margin-bottom: 6px;
+    background: white;
+    border-radius: 6px;
+    text-decoration: none;
+    color: #333;
+  }
+
+  .chat-list a.selected {
+    background-color: #ffe082;
+    font-weight: bold;
+  }
+
+  .chat-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #e9e9e9;
+  }
+
+  .msgs-wrap {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .reply-from {
+    padding: 10px 20px;
+    background: #fff;
+    border-top: 1px solid #ccc;
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+  }
+
+  .sidebar-right {
+    width: 200px;
+    background: #fff3e0;
+    padding: 10px;
+    border-left: 1px solid #ccc;
+  }
+
+  .msg-user {
+    background: #d0ebff;
+    align-self: flex-start;
+    padding: 10px;
+    border-radius: 10px;
+    max-width: 70%;
+  }
+
+  .msg-bot {
+    background: #fff8dc;
+    align-self: flex-end;
+    padding: 10px;
+    border-radius: 10px;
+    max-width: 70%;
+    border: 1px solid #f4e2ab;
+  }
+
+  .msg-meta {
+    font-size: 0.75rem;
+    color: #555;
+    margin-top: 4px;
+  }
+</style>
+
+<div class="chat-layout">
+  <div class="chat-list">
+    {% for chat in chats %}
+      <a href="/chats/{{ chat.numero }}" class="{{ 'selected' if selected == chat.numero else '' }}">
+        {{ chat.numero }}
+      </a>
+    {% endfor %}
+  </div>
+
+  <div class="chat-main">
+    <div class="msgs-wrap">
+      {% if mensajes %}
+        <h3>Chat con {{ selected }}</h3>
+        {% for msg in mensajes %}
+          {% if msg.respuesta %}
+            <div class="msg-user">
+              {{ msg.mensaje }}
+              <div class="msg-meta">{{ msg.timestamp.strftime("%Y-%m-%d %H:%M:%S") }}</div>
+            </div>
+            <div class="msg-bot">
+              {{ msg.respuesta }}
+              <div class="msg-meta">{{ msg.timestamp.strftime("%Y-%m-%d %H:%M:%S") }}</div>
+            </div>
+          {% else %}
+            <div class="msg-user">
+              {{ msg.mensaje }}
+              <div class="msg-meta">{{ msg.timestamp.strftime("%Y-%m-%d %H:%M:%S") }}</div>
+            </div>
+          {% endif %}
         {% endfor %}
-      </ul>
-    </aside>
-
-    <!-- Mensajes -->
-    <section class="messages">
-      {% if mensajes is not none %}
-        <div class="chat-header">
-          <span>Chat con {{ selected }}</span>
-          <form method="POST" action="{{ url_for('toggle_ai', numero=selected) }}">
-            <button type="submit"
-                    class="toggle-btn {{ 'on' if IA_ESTADOS[selected] else 'off' }}">
-              IA {{ 'ON' if IA_ESTADOS[selected] else 'OFF' }}
-            </button>
-          </form>
-        </div>
-        <div class="msgs-wrap" id="msgs-wrap">
-          {% for m in mensajes %}
-            <div class="msg-box msg-user"><p>{{ m['mensaje'] }}</p><span class="ts">{{ m['timestamp'] }}</span></div>
-            {% if m['respuesta'] %}
-              <div class="msg-box msg-ai"><p>{{ m['respuesta'] }}</p><span class="ts">{{ m['timestamp'] }}</span></div>
-            {% endif %}
-          {% endfor %}
-        </div>
-        <form class="reply-form" method="POST" action="{{ url_for('enviar_manual') }}">
-          <div class="input-group">
-            <button type="button" class="emoji-btn">😀</button>
-            <input type="hidden" name="numero" value="{{ selected }}">
-            <input type="text" name="texto" class="reply-input-line" placeholder="Escribe un mensaje…" required>
-            <button type="submit" class="send-btn">Enviar ahora</button>
-          </div>
-        </form>
       {% else %}
-        <p class="no-chat">Selecciona un chat para ver el historial.</p>
+        <p style="padding:1rem;">Selecciona un chat para ver mensajes.</p>
       {% endif %}
-    </section>
+    </div>
 
-    <!-- Sidebar derecho -->
-    {% if mensajes is not none %}
-      <aside class="sidebar-right">
-        <form method="POST" action="{{ url_for('eliminar_chat', numero=selected) }}">
-          <button type="submit" class="delete-btn">🗑️ Eliminar Chat</button>
-        </form>
-        <form method="POST" action="{{ url_for('toggle_ai', numero=selected) }}">
-          <button type="submit"
-                  class="toggle-btn {{ 'on' if IA_ESTADOS[selected] else 'off' }}">
-            IA {{ 'ON' if IA_ESTADOS[selected] else 'OFF' }}
-          </button>
-        </form>
-      </aside>
+    {% if selected %}
+    <form method="POST" action="/send-manual" class="reply-from">
+      <input type="hidden" name="numero" value="{{ selected }}">
+      <input type="text" name="texto" placeholder="Escribe una respuesta..." style="width: 80%;">
+      <button type="submit">Enviar</button>
+    </form>
     {% endif %}
   </div>
 
-  <script src="https://unpkg.com/@joeattardi/emoji-button@4.6.2/dist/index.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', ()=>{
-      const btn = document.querySelector('.emoji-btn');
-      const inp = document.querySelector('.reply-input-line');
-      const picker = new EmojiButton({ position:'top-start', zIndex:1000 });
-      picker.on('emoji', e=>{ inp.value+=e; inp.focus(); });
-      btn.addEventListener('click', ()=>picker.togglePicker(btn));
-      const wrap=document.getElementById('msgs-wrap');
-      if(wrap) wrap.scrollTop=wrap.scrollHeight;
-    });
-  </script>
+  <div class="sidebar-right">
+    {% if selected %}
+      <form action="/chats/{{ selected }}/eliminar" method="POST" onsubmit="return confirm('¿Eliminar este chat?')">
+        <button type="submit" style="background:#e53935; color:white; padding:10px 15px; border:none; border-radius:5px; margin-bottom:10px;">
+          🗑️ Eliminar Chat
+        </button>
+      </form>
+      <form action="/toggle_ai/{{ selected }}" method="POST">
+        <button type="submit" style="background:#ff9800; color:white; padding:10px 15px; border:none; border-radius:5px;">
+          IA {{ 'ON' if IA_ESTADOS.get(selected, True) else 'OFF' }}
+        </button>
+      </form>
+    {% endif %}
+  </div>
+</div>
 {% endblock %}
