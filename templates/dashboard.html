@@ -1,35 +1,85 @@
-{% extends 'base.html' %}
-{% block title %}Home – Dashboard{% endblock %}
-{% block content %}
-  <div class="dashboard-header">
-    <h2>Dashboard General</h2>
-    <div class="period-selector">
-      <a href="{{ url_for('home', period='week') }}" class="{{ 'active' if period=='week' else '' }}">Semana</a> |
-      <a href="{{ url_for('home', period='month') }}" class="{{ 'active' if period=='month' else '' }}">Mes</a>
-    </div>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dashboard General</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #FAF3E5;
+      padding: 2rem;
+      color: #222;
+    }
+    h1 {
+      color: #1f4e79;
+    }
+    .tabs {
+      margin-bottom: 20px;
+    }
+    .tabs a {
+      padding: 10px 20px;
+      text-decoration: none;
+      border-radius: 20px;
+      border: 2px solid #1f4e79;
+      color: #1f4e79;
+      margin-right: 10px;
+    }
+    .tabs a.active {
+      background-color: #1f4e79;
+      color: white;
+    }
+    .stats {
+      margin-top: 20px;
+      display: flex;
+      gap: 2rem;
+    }
+    .chart-container {
+      margin-top: 40px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Dashboard General</h1>
+
+  <div class="tabs">
+    <a href="/home?period=week" class="{{ 'active' if period == 'week' else '' }}">Últimos 7 días</a>
+    <a href="/home?period=month" class="{{ 'active' if period == 'month' else '' }}">Últimos 30 días</a>
   </div>
 
-  <div class="dashboard-stats">
-    <div class="stat-card">
-      <strong>Chats Diferentes:</strong> {{ chat_counts }}
-    </div>
-    <div class="stat-card">
-      <strong>Mensajes Respondidos:</strong> {{ total_responded }}
-    </div>
+  <div class="stats">
+    <div><strong>Chats distintos:</strong> {{ chat_counts }}</div>
+    <div><strong>Respuestas enviadas:</strong> {{ total_responded }}</div>
   </div>
 
-  <h3>Mensajes por Chat</h3>
-  <table class="stats-table">
-    <thead>
-      <tr><th>Chat</th><th>Cantidad</th></tr>
-    </thead>
-    <tbody>
-      {% for numero, cnt in messages_per_chat %}
-      <tr>
-        <td>{{ numero }}</td>
-        <td>{{ cnt }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-{% endblock %}
+  <div class="chart-container">
+    <canvas id="barChart" width="600" height="300"></canvas>
+  </div>
+
+  <script>
+    const ctx = document.getElementById('barChart').getContext('2d');
+    const data = {
+      labels: {{ labels|safe }},
+      datasets: [{
+        label: 'Mensajes por número',
+        data: {{ values|safe }},
+        backgroundColor: '#1f4e79'
+      }]
+    };
+
+    new Chart(ctx, {
+      type: 'bar',
+      data: data,
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
