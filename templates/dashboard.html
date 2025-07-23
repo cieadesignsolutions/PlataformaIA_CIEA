@@ -42,7 +42,10 @@
     <canvas id="barChart" width="800" height="400"></canvas>
   </div>
 
+  <!-- Chart.js y plugin datalabels -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
   <script>
     const ctx = document.getElementById('barChart').getContext('2d');
     const data = {
@@ -62,14 +65,26 @@
         animation: false,
         maintainAspectRatio: false,
         plugins: {
-          legend: { display: false }
+          legend: { display: false },
+          datalabels: {
+            color: '#000',
+            anchor: 'end',
+            align: 'start',
+            font: {
+              weight: 'bold'
+            },
+            formatter: function(value) {
+              return value;
+            }
+          }
         },
         scales: {
           y: {
             beginAtZero: true
           }
         }
-      }
+      },
+      plugins: [ChartDataLabels]
     });
   </script>
 {% endblock %}
