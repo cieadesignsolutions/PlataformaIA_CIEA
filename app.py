@@ -155,13 +155,18 @@ def recibir_mensaje():
         IA_ESTADOS.setdefault(numero, True)
         respuesta = ""
         if IA_ESTADOS[numero]:
-            # Respuesta IA normal
             respuesta = responder_con_ia(texto)
             enviar_mensaje(numero, respuesta)
-            # Alerta de intervención humana
-            if detectar_intervencion_humana(texto, respuesta):
+
+            # — loguear para ver si detectamos —
+            app.logger.info(f"🔎 Received message for detection: '{texto}'")
+            triggered = detectar_intervencion_humana(texto, respuesta)
+            app.logger.info(f"🔎 Triggered? {triggered}")
+
+            if triggered:
                 resumen = resumen_rafa(numero)
                 enviar_template_alerta("Sin nombre", numero, texto, resumen)
+
 
         guardar_conversacion(numero, texto, respuesta)
 
