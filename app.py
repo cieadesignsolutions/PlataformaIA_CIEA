@@ -271,11 +271,21 @@ def enviar_manual():
     numero    = request.form['numero']
     texto     = request.form['texto']
     respuesta = ""
+
     if IA_ESTADOS.get(numero, True):
+        # 1) La IA responde
         respuesta = responder_con_ia(texto)
         enviar_mensaje(numero, respuesta)
+
+        # 2) Detección de intervención humana Y disparo de alerta
+        if detectar_intervencion_humana(texto, respuesta):
+            resumen = resumen_rafa(numero)
+            enviar_template_alerta("Sin nombre", numero, texto, resumen)
+
+    # 3) Guardamos todo
     guardar_conversacion(numero, texto, respuesta)
     return redirect(url_for('ver_chat', numero=numero))
+
 
 
 @app.route('/chats/<numero>/eliminar', methods=['POST'])
