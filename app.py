@@ -444,25 +444,54 @@ def detectar_intervencion_humana(mensaje_usuario, respuesta_ia):
 
     return False
 
-
 def resumen_rafa(numero):
+    # 1) Obtenemos las últimas X entradas (usuario + IA)
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute(
-        "SELECT mensaje, respuesta FROM conversaciones WHERE numero=%s ORDER BY timestamp DESC LIMIT 5",
+        "SELECT mensaje, respuesta FROM conversaciones "
+        "WHERE numero=%s ORDER BY timestamp DESC LIMIT 10",
         (numero,)
     )
     rows = cursor.fetchall()
     cursor.close()
     conn.close()
 
-    resumen = []
-    for i, row in enumerate(reversed(rows), 1):
-        resumen.append(f"[{i}] Usuario: {row['mensaje']}")
+    # 2) Construimos el texto de la conversación, intercalando roles
+    partes = []
+    for row in reversed(rows):
+        partes.append(f"Usuario: {row['mensaje']}")
         if row['respuesta']:
-            resumen.append(f"    IA: {row['respuesta']}")
-    return "\n".join(resumen)
+            partes.append(f"IA: {row['respuesta']}")
+    conversa = "\n".join(partes)
 
+    # 3) Pedimos a la IA un resumen tipo RAFA
+    system = """
+Eres un asistente que crea resúmenes estilo RAFA: muy completos pero concisos, 
+capturando los puntos clave en un solo párrafo.
+""".strip()
+    user_prompt = f"""
+Resumen de la siguiente conversación con el cliente (solo un párrafo):
+
+{conversa}
+"""
+    try:
+        resp = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user",   "content": user_prompt}
+            ],
+            temperature=0.5,
+            max_tokens=300
+        )
+        resumen = resp.choices[0].message.content.strip()
+    except Exception as e:
+        app.logger.error(f"🔴 Error generando resumen RAFA: {e}")
+        # Fallback a un mini-resumen manual muy básico
+        resumen = "El cliente solicitó atención personalizada."
+
+    return resumen
 
 def enviar_template_alerta(nombre, numero_cliente, mensaje_clave, resumen):
     # Sanitizar para WhatsApp HSM: quitar saltos de línea y tabs, comprimir espacios
