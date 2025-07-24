@@ -1,66 +1,61 @@
-
 {% extends "base.html" %}
 {% block title %}Conversaciones{% endblock %}
 
 {% block content %}
 <style>
-  body {
-    margin: 0;
-    font-family: 'Segoe UI', sans-serif;
-    background: #0d1525;
-    color: #fff;
-  }
-
   .chat-layout {
     display: flex;
-    height: calc(100vh - 60px);
+    height: calc(100vh - 80px);
     overflow: hidden;
+    font-family: "Segoe UI", sans-serif;
   }
 
   .chat-list {
-    width: 260px;
-    background: #05285e;
-    padding: 10px;
+    width: 250px;
+    background: #f7f7f7;
+    border-right: 1px solid #ccc;
     overflow-y: auto;
-    color: white;
+    padding: 0.5rem;
   }
 
   .chat-list a {
     display: block;
-    background: #073b8c;
-    color: #fff;
     padding: 12px;
-    border-radius: 8px;
     margin-bottom: 8px;
+    background: #ffffff;
+    border-radius: 8px;
     text-decoration: none;
+    color: #333;
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     transition: background 0.2s;
   }
 
   .chat-list a:hover {
-    background: #0056b3;
+    background-color: #e0e0e0;
   }
 
   .chat-list a.selected {
-    background: #fbc02d;
-    color: #000;
+    background-color: #ffe082;
     font-weight: bold;
+    color: #000;
   }
 
   .chat-main {
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: url('/static/img/chat-bg.jpg') repeat;
+    background: linear-gradient(to bottom, #ffffff, #f1f1f1);
     position: relative;
   }
 
   .chat-header {
-    padding: 16px;
-    background: #001a33;
-    color: #fbc02d;
-    font-size: 18px;
+    padding: 1rem;
+    border-bottom: 1px solid #ccc;
+    background: #f5f5f5;
+    font-size: 1.2rem;
     font-weight: bold;
-    border-bottom: 1px solid #333;
+    color: #1f4e79;
   }
 
   .msgs-wrap {
@@ -69,135 +64,159 @@
     padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-  }
-
-  .msg-user {
-    align-self: flex-start;
-    background: #0074d9;
-    color: white;
-    border-radius: 20px 20px 20px 0;
-    padding: 12px 18px;
-    max-width: 70%;
-    font-size: 15px;
-    line-height: 1.4;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-  }
-
-  .msg-bot {
-    align-self: flex-end;
-    background: #ffe082;
-    color: #333;
-    border-radius: 20px 20px 0 20px;
-    padding: 12px 18px;
-    max-width: 70%;
-    font-size: 15px;
-    line-height: 1.4;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-  }
-
-  .msg-time {
-    font-size: 11px;
-    color: #ccc;
-    margin-top: 4px;
+    gap: 15px;
   }
 
   .reply-from {
-    display: flex;
-    gap: 10px;
-    padding: 12px 16px;
+    padding: 12px 20px;
     background: #ffffff;
+    border-top: 1px solid #ccc;
     position: sticky;
     bottom: 0;
-    border-top: 1px solid #ccc;
-    z-index: 100;
+    z-index: 10;
+    display: flex;
+    gap: 10px;
   }
 
   .reply-from input[type="text"] {
     flex: 1;
     padding: 10px;
-    font-size: 15px;
-    border: 1px solid #ccc;
     border-radius: 6px;
+    border: 1px solid #aaa;
+    font-size: 1rem;
   }
 
   .reply-from button {
-    background: #0074d9;
+    padding: 10px 20px;
+    background: #1f4e79;
     color: white;
-    padding: 10px 18px;
     border: none;
     border-radius: 6px;
     font-weight: bold;
   }
 
   .sidebar-right {
-    width: 220px;
+    width: 200px;
     background: #fff8e1;
-    padding: 16px;
+    padding: 1rem;
     border-left: 1px solid #ccc;
   }
 
-  .sidebar-right button {
+  .msg-user, .msg-bot {
+    max-width: 70%;
+    padding: 12px 16px;
+    border-radius: 20px;
+    position: relative;
+    font-size: 1rem;
+    line-height: 1.4;
+    word-wrap: break-word;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  .msg-user {
+    background: #d0ebff;
+    align-self: flex-start;
+    border-bottom-left-radius: 0;
+  }
+
+  .msg-bot {
+    background: #fff3cd;
+    align-self: flex-end;
+    border-bottom-right-radius: 0;
+  }
+
+  .msg-meta {
+    font-size: 0.75rem;
+    margin-top: 4px;
+    color: #666;
+    text-align: right;
+  }
+
+  button.eliminar {
+    background:#e53935;
+    color:white;
+    padding:10px 15px;
+    border:none;
+    border-radius:5px;
     width: 100%;
-    margin-bottom: 10px;
-    padding: 10px;
     font-weight: bold;
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
+    margin-bottom: 1rem;
   }
 
-  .btn-danger {
-    background: #d32f2f;
-    color: white;
-  }
-
-  .btn-toggle {
-    background: #fbc02d;
-    color: #000;
+  button.toggle {
+    background:#ff9800;
+    color:white;
+    padding:10px 15px;
+    border:none;
+    border-radius:5px;
+    width: 100%;
+    font-weight: bold;
   }
 </style>
 
 <div class="chat-layout">
   <div class="chat-list">
     {% for chat in chats %}
-      <a href="{{ url_for('ver_chat', numero=chat) }}" class="{{ 'selected' if chat == selected else '' }}">
-        {{ chat }}
+      <a href="/chats/{{ chat.numero }}" class="{{ 'selected' if selected == chat.numero else '' }}">
+        {{ chat.numero }}
       </a>
     {% endfor %}
   </div>
 
   <div class="chat-main">
-    <div class="chat-header">Chat con {{ selected }}</div>
-    <div class="msgs-wrap">
-      {% for mensaje in mensajes %}
-        {% if mensaje['from'] == 'user' %}
-          <div class="msg-user">
-            {{ mensaje['text'] }}
-            <div class="msg-time">{{ mensaje['timestamp'] }}</div>
-          </div>
-        {% else %}
-          <div class="msg-bot">
-            {{ mensaje['text'] }}
-            <div class="msg-time">{{ mensaje['timestamp'] }}</div>
-          </div>
-        {% endif %}
-      {% endfor %}
+    <div class="chat-header">
+      {% if selected %}Chat con {{ selected }}{% else %}Selecciona un chat{% endif %}
     </div>
-    <form class="reply-from" method="post">
-      <input type="text" name="respuesta" placeholder="Escribe una respuesta...">
+
+    <div class="msgs-wrap" id="msgs">
+      {% if mensajes %}
+        {% for msg in mensajes %}
+          {% if msg.respuesta %}
+            <div class="msg-user">
+              {{ msg.mensaje }}
+              <div class="msg-meta">{{ msg.timestamp.strftime("%Y-%m-%d %H:%M:%S") }}</div>
+            </div>
+            <div class="msg-bot">
+              {{ msg.respuesta }}
+              <div class="msg-meta">{{ msg.timestamp.strftime("%Y-%m-%d %H:%M:%S") }}</div>
+            </div>
+          {% else %}
+            <div class="msg-user">
+              {{ msg.mensaje }}
+              <div class="msg-meta">{{ msg.timestamp.strftime("%Y-%m-%d %H:%M:%S") }}</div>
+            </div>
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        <p style="padding:1rem;">Selecciona un chat para ver mensajes.</p>
+      {% endif %}
+    </div>
+
+    {% if selected %}
+    <form method="POST" action="/send-manual" class="reply-from">
+      <input type="hidden" name="numero" value="{{ selected }}">
+      <input type="text" name="texto" placeholder="Escribe una respuesta..." autocomplete="off" />
       <button type="submit">Enviar</button>
     </form>
+    {% endif %}
   </div>
 
   <div class="sidebar-right">
-    <form method="post" action="{{ url_for('eliminar_chat', selected=selected) }}">
-      <button class="btn-danger" type="submit">🗑️ Eliminar Chat</button>
-    </form>
-    <form method="post" action="{{ url_for('toggle_ia', selected=selected) }}">
-      <button class="btn-toggle" type="submit">IA {{ 'ON' if ia_activada else 'OFF' }}</button>
-    </form>
+    {% if selected %}
+      <form action="/chats/{{ selected }}/eliminar" method="POST" onsubmit="return confirm('¿Eliminar este chat?')">
+        <button type="submit" class="eliminar">🗑️ Eliminar Chat</button>
+      </form>
+      <form action="/toggle_ai/{{ selected }}" method="POST">
+        <button type="submit" class="toggle">IA {{ 'ON' if IA_ESTADOS.get(selected, True) else 'OFF' }}</button>
+      </form>
+    {% endif %}
   </div>
 </div>
-{% endblock %}
 
+<script>
+  const msgs = document.getElementById('msgs');
+  if (msgs) {
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+</script>
+{% endblock %}
