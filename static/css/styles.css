@@ -508,3 +508,15 @@ body {
   font-weight: 500;
   font-size: 1.05rem;
 }
+
+/* CONTRASTE DE BURBUJAS */
+.msg-user, .msg-bot, .msg-box {
+  color: #111 !important;
+  font-weight: 400;
+  font-size: 1rem;
+}
+
+.msg-meta {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
