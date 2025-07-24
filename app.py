@@ -20,7 +20,7 @@ DB_HOST        = os.getenv("DB_HOST")
 DB_USER        = os.getenv("DB_USER")
 DB_PASSWORD    = os.getenv("DB_PASSWORD")
 DB_NAME        = os.getenv("DB_NAME")
-MI_NUMERO_BOT  = os.getenv("MI_NUMERO_BOT")  # tu número de WhatsApp Business
+MI_NUMERO_BOT  = os.getenv("MI_NUMERO_BOT")  # tu Phone Number ID de WhatsApp Business
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 IA_ESTADOS = {}
@@ -145,7 +145,7 @@ def recibir_mensaje():
         msg    = mensajes[0]
         numero = msg['from']
         texto  = msg['text']['body']
-        # Ignorar mensajes que vienen de tu propio número
+        # Ignorar mensajes del propio bot
         if numero == MI_NUMERO_BOT:
             return 'OK', 200
 
@@ -155,7 +155,7 @@ def recibir_mensaje():
             # Respuesta IA normal
             respuesta = responder_con_ia(texto)
             enviar_mensaje(numero, respuesta)
-            # === Aquí integramos la alerta de intervención humana ===
+            # Alerta de intervención humana
             if detectar_intervencion_humana(texto, respuesta):
                 resumen = resumen_rafa(numero)
                 enviar_template_alerta("Sin nombre", numero, texto, resumen)
@@ -276,8 +276,7 @@ def enviar_manual():
         # 1) La IA responde
         respuesta = responder_con_ia(texto)
         enviar_mensaje(numero, respuesta)
-
-        # 2) Detección de intervención humana Y disparo de alerta
+        # 2) Detección y alerta
         if detectar_intervencion_humana(texto, respuesta):
             resumen = resumen_rafa(numero)
             enviar_template_alerta("Sin nombre", numero, texto, resumen)
@@ -285,7 +284,6 @@ def enviar_manual():
     # 3) Guardamos todo
     guardar_conversacion(numero, texto, respuesta)
     return redirect(url_for('ver_chat', numero=numero))
-
 
 
 @app.route('/chats/<numero>/eliminar', methods=['POST'])
@@ -413,9 +411,12 @@ def guardar_conversacion(numero, mensaje, respuesta):
 
 
 # ——— Detección y alerta de intervención humana ———
-
 def detectar_intervencion_humana(mensaje_usuario, respuesta_ia):
     texto = mensaje_usuario.lower()
+    # Trigger genérico
+    if 'hablar con ' in texto:
+        return True
+
     disparadores = [
         'hablar con persona',
         'hablar con alguien',
@@ -424,18 +425,15 @@ def detectar_intervencion_humana(mensaje_usuario, respuesta_ia):
         'quiero atención personalizada',
         'puede ayudarme una persona'
     ]
-    # Patrón genérico: si contienen 'hablar con'
-    if 'hablar con ' in texto:
-        return True
-    # Luego revisamos los disparadores exactos
     for frase in disparadores:
         if frase in texto:
             return True
-    # También disparar si la IA menciona que va a canalizar
-    respuesta = respuesta_ia.lower()
+
+    resp_low = respuesta_ia.lower()
     for tag in ['te canalizaré', 'un asesor te contactará']:
-        if tag in respuesta:
+        if tag in resp_low:
             return True
+
     return False
 
 
@@ -466,7 +464,7 @@ def enviar_template_alerta(nombre, numero_cliente, mensaje_clave, resumen):
     }
     payload = {
         "messaging_product": "whatsapp",
-        "to": "524491182201",  # tu número personal
+        "to": f"+{numero_cliente}",
         "type": "template",
         "template": {
             "name": "alerta_intervencion",
