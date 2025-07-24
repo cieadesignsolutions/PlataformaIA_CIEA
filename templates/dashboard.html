@@ -46,43 +46,50 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-  <script>
-    const ctx = document.getElementById('barChart').getContext('2d');
-    const data = {
-      labels: {{ labels|safe }},
-      datasets: [{
-        label: 'Mensajes por número',
-        data: {{ values|safe }},
-        backgroundColor: '#1f4e79'
-      }]
-    };
+<script>
+  const ctx = document.getElementById('barChart').getContext('2d');
+  const rawValues = {{ values|safe }};
 
-    new Chart(ctx, {
-      type: 'bar',
-      data: data,
-      options: {
-        responsive: false,
-        animation: false,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          datalabels: {
-            anchor: 'end',         // Posición: arriba
-            align: 'end',
-            color: '#fff',         // Color blanco
-            font: {
-              weight: 'bold',
-              size: 14             // Tamaño de texto
-            }
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true
+  // Calculamos el valor máximo con 10% extra como margen
+  const maxValor = Math.max(...rawValues);
+  const maxAuto = Math.ceil((maxValor * 1.1) / 5) * 5; // redondeado al siguiente múltiplo de 5
+
+  const data = {
+    labels: {{ labels|safe }},
+    datasets: [{
+      label: 'Mensajes por número',
+      data: rawValues,
+      backgroundColor: '#1f4e79'
+    }]
+  };
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: data,
+    options: {
+      responsive: false,
+      animation: false,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          anchor: 'end',
+          align: 'end',
+          color: '#fff',
+          font: {
+            weight: 'bold',
+            size: 14
           }
         }
       },
-      plugins: [ChartDataLabels]
-    });
-  </script>
+      scales: {
+        y: {
+          beginAtZero: true,
+          suggestedMax: maxAuto
+        }
+      }
+    },
+    plugins: [ChartDataLabels]
+  });
+</script>
 {% endblock %}
