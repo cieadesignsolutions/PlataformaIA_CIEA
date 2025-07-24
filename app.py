@@ -419,29 +419,49 @@ def guardar_conversacion(numero, mensaje, respuesta):
     cursor.close()
     conn.close()
 
-
 # ——— Detección y alerta de intervención humana ———
 def detectar_intervencion_humana(mensaje_usuario, respuesta_ia):
     texto = mensaje_usuario.lower()
-    # Trigger genérico
-    if 'hablar con ' in texto:
+
+    # 1) Patrón genérico: “hablar con …” o “ponme con …”
+    if 'hablar con ' in texto or 'ponme con ' in texto:
         return True
 
+    # 2) Lista amplia de disparadores (Español)
     disparadores = [
-        'hablar con persona',
-        'hablar con alguien',
-        'me atiende una persona',
-        'no me resuelve',
-        'quiero atención personalizada',
-        'puede ayudarme una persona'
+        # Hablar con…
+        'hablar con persona', 'hablar con un asesor', 'hablar con un agente',
+        'hablar con alguien', 'quiero un asesor', 'quiero un agente',
+        # Humano / humano
+        'ponme con humano', 'ponme con un humano', 'solo un humano',
+        'solo un agente humano', 'solo un asesor humano',
+        # Atención…
+        'atención personalizada', 'atención humana', 'atención de un humano',
+        'atención de una persona', 'atención de un agente',
+        # Soporte…
+        'soporte técnico', 'soporte humano', 'soporte de un agente',
+        # Representante…
+        'hablar con representante', 'representante de ventas',
+        'un representante', 'contactar a un representante',
+        # Emergencia / supervisor
+        'es urgente', 'supervisor', 'quien me supervise', 'nivel supervisor',
+        # Otros…
+        'no me resuelve', 'necesito ayuda humana', 'necesito persona real',
+        'quiero un humano', 'quiero hablar a un humano',
+        'necesito un representante'
     ]
     for frase in disparadores:
         if frase in texto:
             return True
 
-    resp_low = respuesta_ia.lower()
-    for tag in ['te canalizaré', 'un asesor te contactará']:
-        if tag in resp_low:
+    # 3) Disparadores en la respuesta de la IA (si menciona que canaliza)
+    respuesta = respuesta_ia.lower()
+    canalizaciones = [
+        'te canalizaré', 'un asesor te contactará', 'te paso con',
+        'te transfiero a', 'te comunicaré con', 'llamará un agente'
+    ]
+    for tag in canalizaciones:
+        if tag in respuesta:
             return True
 
     return False
