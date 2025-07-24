@@ -528,8 +528,29 @@ body {
   color: #002663;
 }
 .chat-list-header {
+    padding: 20px 20px 10px 20px;
+    font-size: 20px;
+    font-weight: 600;
+    font-family: 'Segoe UI', sans-serif;
+    color: #1a1a1a;
+}
+
+.chat-list-header h2 {
+    font-size: 18px;
+    margin: 0;
+    color: #1d1d1d;
+    font-weight: 600;
+}
+.chat-list-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.chat-list-header {
     padding: 15px 20px 5px 20px;
     font-family: 'Segoe UI', sans-serif;
+    background-color: transparent;
 }
 
 .chat-list-header h2 {

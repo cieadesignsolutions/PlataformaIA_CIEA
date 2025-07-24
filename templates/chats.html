@@ -155,9 +155,10 @@
 </style>
 
 <div class="chat-layout">
-	<div class="chat-list-header">
-		<h2>Conversaciones</h2>
-	</div>
+  <div class="chat-list-header">
+    <h2>Conversaciones</h2>
+  </div>
+
   <div class="chat-list">
     {% for chat in chats %}
       <a href="/chats/{{ chat.numero }}" class="{{ 'selected' if selected == chat.numero else '' }}">
