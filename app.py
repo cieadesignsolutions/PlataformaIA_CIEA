@@ -24,6 +24,8 @@ DB_USER        = os.getenv("DB_USER")
 DB_PASSWORD    = os.getenv("DB_PASSWORD")
 DB_NAME        = os.getenv("DB_NAME")
 MI_NUMERO_BOT  = os.getenv("MI_NUMERO_BOT")  # tu Phone Number ID de WhatsApp Business
+ALERT_NUMBER = os.getenv("ALERT_NUMBER", "524491182201")
+
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 IA_ESTADOS = {}
@@ -510,9 +512,10 @@ def enviar_template_alerta(nombre, numero_cliente, mensaje_clave, resumen):
         'Authorization': f'Bearer {WHATSAPP_TOKEN}',
         'Content-Type': 'application/json'
     }
+    alert_dest = f"+{ALERT_NUMBER}"   # <-- Tu número personal con código de país
     payload = {
         "messaging_product": "whatsapp",
-        "to": f"+{numero_cliente}",
+        "to": alert_dest,
         "type": "template",
         "template": {
             "name": "alerta_intervencion",
