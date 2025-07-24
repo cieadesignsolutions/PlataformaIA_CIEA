@@ -495,7 +495,7 @@ def test_alerta():
 
     # Datos de prueba
     nombre    = "Prueba"
-    numero    = "+524491182201"
+    numero    = "524491182201"
     mensaje   = "¡Esto es una prueba de alerta!"
     resumen   = "[1] Usuario: prueba\n    IA: respuesta de prueba"
 
