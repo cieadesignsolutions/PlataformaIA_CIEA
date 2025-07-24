@@ -554,8 +554,8 @@ body {
 }
 
 .chat-list-header h2 {
-    font-size: 18px;
+    font-size: 30px;
     margin: 0;
-    color: #1d1d1d;
+    color: #white;
     font-weight: 600;
 }
