@@ -405,16 +405,27 @@ def guardar_conversacion(numero, mensaje, respuesta):
 # ——— Detección y alerta de intervención humana ———
 
 def detectar_intervencion_humana(mensaje_usuario, respuesta_ia):
+    texto = mensaje_usuario.lower()
     disparadores = [
-        'hablar con alguien', 'me atiende una persona',
-        'no me resuelve', 'quiero atención personalizada',
+        'hablar con persona',
+        'hablar con alguien',
+        'me atiende una persona',
+        'no me resuelve',
+        'quiero atención personalizada',
         'puede ayudarme una persona'
     ]
-    for frase in disparadores:
-        if frase in mensaje_usuario.lower():
-            return True
-    if any(tag in respuesta_ia.lower() for tag in ['te canalizaré', 'un asesor te contactará']):
+    # Patrón genérico: si contienen 'hablar con'
+    if 'hablar con ' in texto:
         return True
+    # Luego revisamos los disparadores exactos
+    for frase in disparadores:
+        if frase in texto:
+            return True
+    # También disparar si la IA menciona que va a canalizar
+    respuesta = respuesta_ia.lower()
+    for tag in ['te canalizaré', 'un asesor te contactará']:
+        if tag in respuesta:
+            return True
     return False
 
 
