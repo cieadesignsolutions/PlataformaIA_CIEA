@@ -460,6 +460,17 @@ def resumen_rafa(numero):
 
 
 def enviar_template_alerta(nombre, numero_cliente, mensaje_clave, resumen):
+    # Sanitizar para WhatsApp HSM: quitar saltos de línea y tabs, comprimir espacios
+    def sanitizar(texto):
+        # reemplaza saltos de línea y tabs por un espacio
+        clean = texto.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+        # colapsa múltiples espacios en uno solo
+        return ' '.join(clean.split())
+
+    nombre_clean         = sanitizar(nombre)
+    mensaje_clean        = sanitizar(mensaje_clave)
+    resumen_clean        = sanitizar(resumen)
+
     url     = f"https://graph.facebook.com/v17.0/{MI_NUMERO_BOT}/messages"
     headers = {
         'Authorization': f'Bearer {WHATSAPP_TOKEN}',
@@ -475,19 +486,21 @@ def enviar_template_alerta(nombre, numero_cliente, mensaje_clave, resumen):
             "components": [{
                 "type": "body",
                 "parameters": [
-                    {"type": "text", "text": nombre},
+                    {"type": "text", "text": nombre_clean},
                     {"type": "text", "text": f"+{numero_cliente}"},
-                    {"type": "text", "text": mensaje_clave},
-                    {"type": "text", "text": resumen}
+                    {"type": "text", "text": mensaje_clean},
+                    {"type": "text", "text": resumen_clean}
                 ]
             }]
         }
     }
+    app.logger.info(f"📤 Alerta payload limpio: {payload}")
     try:
         r = requests.post(url, headers=headers, json=payload)
-        app.logger.info(f"📤 Alerta enviada: {r.status_code} {r.text}")
+        app.logger.info(f"📤 Alerta enviada: {r.status_code} – {r.text}")
     except Exception as e:
         app.logger.error(f"🔴 Error enviando alerta: {e}")
+
 
 @app.route('/test-alerta')
 def test_alerta():
@@ -495,7 +508,7 @@ def test_alerta():
 
     # Datos de prueba
     nombre    = "Prueba"
-    numero    = "524491182201"
+    numero    = "+524491182201"
     mensaje   = "¡Esto es una prueba de alerta!"
     resumen   = "[1] Usuario: prueba\n    IA: respuesta de prueba"
 
