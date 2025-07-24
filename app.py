@@ -11,6 +11,9 @@ from datetime import datetime, timedelta
 
 load_dotenv()
 app = Flask(__name__)
+import logging
+app.logger.setLevel(logging.INFO)
+
 
 # ——— Env vars ———
 VERIFY_TOKEN   = os.getenv("VERIFY_TOKEN")
@@ -488,13 +491,47 @@ def enviar_template_alerta(nombre, numero_cliente, mensaje_clave, resumen):
 
 @app.route('/test-alerta')
 def test_alerta():
-    app.logger.info("🧪 Entrando a test-alerta")
-    nombre = "Prueba"
-    numero = "4491182201"
-    mensaje = "¡Esto es una prueba de alerta!"
-    resumen = "[1] Usuario: prueba\n    IA: respuesta de prueba"
-    enviar_template_alerta(nombre, numero, mensaje, resumen)
-    return "🚀 Test alerta disparada. Revisa tu WhatsApp."
+    app.logger.info("🧪 Entramos a /test-alerta")
+
+    # Datos de prueba
+    nombre    = "Prueba"
+    numero    = "4491182201"
+    mensaje   = "¡Esto es una prueba de alerta!"
+    resumen   = "[1] Usuario: prueba\n    IA: respuesta de prueba"
+
+    # Construimos payload igual que en enviar_template_alerta
+    url = f"https://graph.facebook.com/v17.0/{MI_NUMERO_BOT}/messages"
+    headers = {
+        'Authorization': f'Bearer {WHATSAPP_TOKEN}',
+        'Content-Type': 'application/json'
+    }
+    payload = {
+      "messaging_product": "whatsapp",
+      "to": f"+{numero}",
+      "type": "template",
+      "template": {
+        "name": "alerta_intervencion",
+        "language": {"code": "es_MX"},
+        "components": [{
+          "type": "body",
+          "parameters": [
+            {"type": "text", "text": nombre},
+            {"type": "text", "text": f"+{numero}"},
+            {"type": "text", "text": mensaje},
+            {"type": "text", "text": resumen}
+          ]
+        }]
+      }
+    }
+
+    r = requests.post(url, headers=headers, json=payload)
+    app.logger.info(f"📤 Test alerta HTTP {r.status_code} – {r.text}")
+
+    # Devuelvo el resultado para verlo de inmediato
+    return (f"🚀 Test alerta disparada.<br>"
+            f"Status: {r.status_code}<br>"
+            f"Body: {r.text}")
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv('PORT','5000')))
