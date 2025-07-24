@@ -486,6 +486,15 @@ def enviar_template_alerta(nombre, numero_cliente, mensaje_clave, resumen):
     except Exception as e:
         app.logger.error(f"🔴 Error enviando alerta: {e}")
 
+@app.route('/test-alerta')
+def test_alerta():
+    app.logger.info("🧪 Entrando a test-alerta")
+    nombre = "Prueba"
+    numero = "4491182201"
+    mensaje = "¡Esto es una prueba de alerta!"
+    resumen = "[1] Usuario: prueba\n    IA: respuesta de prueba"
+    enviar_template_alerta(nombre, numero, mensaje, resumen)
+    return "🚀 Test alerta disparada. Revisa tu WhatsApp."
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv('PORT','5000')))
