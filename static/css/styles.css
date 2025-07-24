@@ -527,3 +527,14 @@ body {
   margin: 15px 20px 10px;
   color: #002663;
 }
+.chat-list-header {
+    padding: 15px 20px 5px 20px;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.chat-list-header h2 {
+    font-size: 18px;
+    margin: 0;
+    color: #1d1d1d;
+    font-weight: 600;
+}
