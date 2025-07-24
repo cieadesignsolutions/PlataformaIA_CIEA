@@ -269,6 +269,18 @@ def guardar_conversacion(numero, mensaje, respuesta):
     cursor.close()
     conn.close()
 
+@app.route('/send-manual', methods=['POST'])
+def enviar_manual():
+    numero    = request.form['numero']
+    texto     = request.form['texto']
+    respuesta = ""
+    if IA_ESTADOS.get(numero, True):
+        respuesta = responder_con_ia(texto)
+        enviar_mensaje(numero, respuesta)
+    guardar_conversacion(numero, texto, respuesta)
+    return redirect(url_for('ver_chat', numero=numero))
+
+
 @app.route('/')
 def inicio():
     return redirect(url_for('home'))
