@@ -1,0 +1,117 @@
+{# templates/configuracion/precios.html #}
+{% extends 'base.html' %}
+{% block title %}Configuración – Precios{% endblock %}
+
+{% block content %}
+  <div class="config-header">
+    <h2>Configuración: Precios</h2>
+    {% if guardado %}
+      <div class="alert success">¡Guardado correctamente!</div>
+    {% endif %}
+  </div>
+
+  <!-- navegación de subpestañas -->
+  <ul class="tabs">
+    {% for tab in tabs %}
+      <li class="{% if tab == active %}active{% endif %}">
+        {% if tab == 'precios' %}
+          <a href="{{ url_for('configuracion_precios') }}">{{ tab|capitalize }}</a>
+        {% else %}
+          <a href="{{ url_for('configuracion_tab', tab=tab) }}">{{ tab|capitalize }}</a>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+
+  <div class="tab-content">
+    <!-- 1. Lista de precios -->
+    <h3>Servicios y Tarifas</h3>
+    <table class="tabla-precios">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Servicio</th>
+          <th>Descripción</th>
+          <th>Precio</th>
+          <th>Moneda</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for precio in precios %}
+          <tr>
+            <td>{{ precio.id }}</td>
+            <td>{{ precio.servicio }}</td>
+            <td>{{ precio.descripcion or '-' }}</td>
+            <td>{{ "{:,.2f}".format(precio.precio) }}</td>
+            <td>{{ precio.moneda }}</td>
+            <td class="acciones">
+              <a href="{{ url_for('configuracion_precio_editar', pid=precio.id) }}"
+                 class="btn small">Editar</a>
+              <form action="{{ url_for('configuracion_precio_borrar', pid=precio.id) }}"
+                    method="post" class="inline-form">
+                <button type="submit"
+                        class="btn small danger"
+                        onclick="return confirm('¿Eliminar servicio {{ precio.servicio }}?');">
+                  Borrar
+                </button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="6">No hay servicios registrados.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- 2. Formulario alta/edición -->
+    <h3>{{ precio_edit and 'Editar Servicio' or 'Agregar Servicio' }}</h3>
+    <form action="{{ url_for('configuracion_precio_guardar') }}" method="post" class="form-precio">
+      {% if precio_edit %}
+        <input type="hidden" name="id" value="{{ precio_edit.id }}">
+      {% endif %}
+
+      <div class="form-group">
+        <label for="servicio">Servicio *</label>
+        <input type="text" id="servicio" name="servicio"
+               value="{{ precio_edit.servicio if precio_edit else '' }}"
+               required>
+      </div>
+
+      <div class="form-group">
+        <label for="descripcion">Descripción</label>
+        <textarea id="descripcion" name="descripcion" rows="2">{{ precio_edit.descripcion if precio_edit else '' }}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="precio">Precio *</label>
+        <input type="number" step="0.01" min="0" id="precio" name="precio"
+               value="{{ precio_edit.precio if precio_edit else '' }}"
+               required>
+      </div>
+
+      <div class="form-group">
+        <label for="moneda">Moneda *</label>
+        <select id="moneda" name="moneda" required>
+          {% for m in ['MXN','USD','EUR'] %}
+            <option value="{{ m }}"
+                    {% if precio_edit and precio_edit.moneda == m %}selected{% endif %}>
+              {{ m }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn primary">
+          {{ precio_edit and 'Actualizar' or 'Guardar' }}
+        </button>
+        <a href="{{ url_for('configuracion_precios') }}" class="btn secondary">
+          Cancelar
+        </a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

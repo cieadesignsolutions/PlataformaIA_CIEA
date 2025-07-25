@@ -3,15 +3,16 @@ import requests
 import mysql.connector
 from flask import (
     Flask, request, render_template,
-    redirect, url_for, abort
+    redirect, url_for, abort, flash
 )
 from openai import OpenAI
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 load_dotenv()
 app = Flask(__name__)
-import logging
+app.secret_key = os.getenv("SECRET_KEY", "cualquier-cosa")
 app.logger.setLevel(logging.INFO)
 
 
@@ -23,15 +24,15 @@ DB_HOST        = os.getenv("DB_HOST")
 DB_USER        = os.getenv("DB_USER")
 DB_PASSWORD    = os.getenv("DB_PASSWORD")
 DB_NAME        = os.getenv("DB_NAME")
-MI_NUMERO_BOT  = os.getenv("MI_NUMERO_BOT")  # tu Phone Number ID de WhatsApp Business
-ALERT_NUMBER = os.getenv("ALERT_NUMBER", "524491182201")
+MI_NUMERO_BOT  = os.getenv("MI_NUMERO_BOT")
+ALERT_NUMBER   = os.getenv("ALERT_NUMBER", "524491182201")
 
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 IA_ESTADOS = {}
 
-# Subpestañas válidas
-SUBTABS = ['negocio', 'personalizacion']
+# ——— Subpestañas válidas ———
+SUBTABS = ['negocio', 'personalizacion', 'precios']
 
 
 def get_db_connection():
@@ -63,7 +64,7 @@ def load_config():
         lenguaje       VARCHAR(50)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ''')
-    cursor.execute("SELECT * FROM configuracion WHERE id = 1")
+    cursor.execute("SELECT * FROM configuracion WHERE id = 1;")
     row = cursor.fetchone()
     cursor.close()
     conn.close()
@@ -128,13 +129,58 @@ def save_config(cfg_all):
     conn.close()
 
 
+# ——— CRUD y helpers para 'precios' ———
+def obtener_todos_los_precios():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute('''
+      CREATE TABLE IF NOT EXISTS precios (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        servicio VARCHAR(100) NOT NULL,
+        descripcion TEXT,
+        precio DECIMAL(10,2) NOT NULL,
+        moneda CHAR(3) NOT NULL,
+        UNIQUE(servicio)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ''')
+    cursor.execute("SELECT * FROM precios ORDER BY servicio;")
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return rows
+
+def obtener_precio_por_id(pid):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM precios WHERE id=%s;", (pid,))
+    row = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    return row
+
+def obtener_precio(servicio_nombre: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+      SELECT precio, moneda
+        FROM precios
+       WHERE LOWER(servicio)=LOWER(%s)
+       LIMIT 1;
+    """, (servicio_nombre,))
+    res = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    if res:
+        return Decimal(res[0]), res[1]
+    return None
+
+
 # ——— Webhook verification & reception ———
 @app.route('/webhook', methods=['GET'])
 def webhook_verification():
     if request.args.get('hub.verify_token') == VERIFY_TOKEN:
         return request.args.get('hub.challenge')
     return 'Token inválido', 403
-
 
 @app.route('/webhook', methods=['POST'])
 def recibir_mensaje():
@@ -150,25 +196,37 @@ def recibir_mensaje():
         msg    = mensajes[0]
         numero = msg['from']
         texto  = msg['text']['body']
-        # Ignorar mensajes del propio bot
+
         if numero == MI_NUMERO_BOT:
             return 'OK', 200
 
+        # — prioridad mensajes de precios —
+        if texto.lower().startswith('precio de '):
+            servicio = texto[10:].strip()
+            info = obtener_precio(servicio)
+            if info:
+                precio, moneda = info
+                respuesta = f"El precio de *{servicio}* es {precio} {moneda}."
+            else:
+                respuesta = (
+                  f"No encontré tarifa para *{servicio}*.\n"
+                  "Revisa la pestaña de *Precios* en la configuración."
+                )
+            enviar_mensaje(numero, respuesta)
+            guardar_conversacion(numero, texto, respuesta)
+            return 'OK', 200
+
+        # — luego, IA normal —
         IA_ESTADOS.setdefault(numero, True)
         respuesta = ""
         if IA_ESTADOS[numero]:
             respuesta = responder_con_ia(texto)
             enviar_mensaje(numero, respuesta)
 
-            # — loguear para ver si detectamos —
-            app.logger.info(f"🔎 Received message for detection: '{texto}'")
-            triggered = detectar_intervencion_humana(texto, respuesta)
-            app.logger.info(f"🔎 Triggered? {triggered}")
-
-            if triggered:
+            app.logger.info(f"🔎 Mensaje para detección: '{texto}'")
+            if detectar_intervencion_humana(texto, respuesta):
                 resumen = resumen_rafa(numero)
                 enviar_template_alerta("Sin nombre", numero, texto, resumen)
-
 
         guardar_conversacion(numero, texto, respuesta)
 
@@ -184,33 +242,29 @@ def recibir_mensaje():
 def inicio():
     return redirect(url_for('home'))
 
-
 @app.route('/home')
 def home():
     period = request.args.get('period', 'week')
     now    = datetime.now()
-    start  = now - timedelta(days=30) if period == 'month' else now - timedelta(days=7)
+    start  = now - timedelta(days=30) if period=='month' else now - timedelta(days=7)
 
     conn   = get_db_connection()
     cursor = conn.cursor()
 
-    # Stat1: chats distintos
     cursor.execute(
-        "SELECT COUNT(DISTINCT numero) FROM conversaciones WHERE timestamp >= %s",
+        "SELECT COUNT(DISTINCT numero) FROM conversaciones WHERE timestamp>= %s;",
         (start,)
     )
     chat_counts = cursor.fetchone()[0]
 
-    # Stat2: mensajes por chat
     cursor.execute(
-        "SELECT numero, COUNT(*) FROM conversaciones WHERE timestamp >= %s GROUP BY numero",
+        "SELECT numero, COUNT(*) FROM conversaciones WHERE timestamp>= %s GROUP BY numero;",
         (start,)
     )
     messages_per_chat = cursor.fetchall()
 
-    # Stat3: total respondidos
     cursor.execute(
-        "SELECT COUNT(*) FROM conversaciones WHERE respuesta<>'' AND timestamp >= %s",
+        "SELECT COUNT(*) FROM conversaciones WHERE respuesta<>'' AND timestamp>= %s;",
         (start,)
     )
     total_responded = cursor.fetchone()[0]
@@ -218,8 +272,8 @@ def home():
     cursor.close()
     conn.close()
 
-    labels = [num for num, _ in messages_per_chat]
-    values = [count for _, count in messages_per_chat]
+    labels = [num for num,_ in messages_per_chat]
+    values = [cnt for _,cnt in messages_per_chat]
 
     return render_template('dashboard.html',
         chat_counts=chat_counts,
@@ -230,14 +284,13 @@ def home():
         values=values
     )
 
-
 @app.route('/chats')
 def ver_chats():
     conn   = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute(
         "SELECT numero, MAX(timestamp) AS ultima "
-        "FROM conversaciones GROUP BY numero ORDER BY ultima DESC"
+        "FROM conversaciones GROUP BY numero ORDER BY ultima DESC;"
     )
     chats = cursor.fetchall()
     cursor.close()
@@ -247,19 +300,18 @@ def ver_chats():
         selected=None, IA_ESTADOS=IA_ESTADOS
     )
 
-
 @app.route('/chats/<numero>')
 def ver_chat(numero):
     conn   = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute(
-        "SELECT * FROM conversaciones WHERE numero=%s ORDER BY timestamp ASC",
+        "SELECT * FROM conversaciones WHERE numero=%s ORDER BY timestamp ASC;",
         (numero,)
     )
     msgs = cursor.fetchall()
     cursor.execute(
         "SELECT numero, MAX(timestamp) AS ultima "
-        "FROM conversaciones GROUP BY numero ORDER BY ultima DESC"
+        "FROM conversaciones GROUP BY numero ORDER BY ultima DESC;"
     )
     chats = cursor.fetchall()
     cursor.close()
@@ -269,12 +321,10 @@ def ver_chat(numero):
         selected=numero, IA_ESTADOS=IA_ESTADOS
     )
 
-
 @app.route('/toggle_ai/<numero>', methods=['POST'])
 def toggle_ai(numero):
     IA_ESTADOS[numero] = not IA_ESTADOS.get(numero, True)
     return redirect(url_for('ver_chat', numero=numero))
-
 
 @app.route('/send-manual', methods=['POST'])
 def enviar_manual():
@@ -283,27 +333,20 @@ def enviar_manual():
     respuesta = ""
 
     if IA_ESTADOS.get(numero, True):
-        # 1) La IA responde
         respuesta = responder_con_ia(texto)
         enviar_mensaje(numero, respuesta)
-        # 2) Detección y alerta
         if detectar_intervencion_humana(texto, respuesta):
             resumen = resumen_rafa(numero)
             enviar_template_alerta("Sin nombre", numero, texto, resumen)
 
-    # 3) Guardamos todo
     guardar_conversacion(numero, texto, respuesta)
     return redirect(url_for('ver_chat', numero=numero))
-
 
 @app.route('/chats/<numero>/eliminar', methods=['POST'])
 def eliminar_chat(numero):
     conn   = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        "DELETE FROM conversaciones WHERE numero = %s",
-        (numero,)
-    )
+    cursor.execute("DELETE FROM conversaciones WHERE numero=%s;", (numero,))
     conn.commit()
     cursor.close()
     conn.close()
@@ -311,9 +354,10 @@ def eliminar_chat(numero):
     return redirect(url_for('ver_chats'))
 
 
+# ——— Vistas de configuración ———
 @app.route('/configuracion/<tab>', methods=['GET','POST'])
 def configuracion_tab(tab):
-    if tab not in SUBTABS:
+    if tab not in ['negocio','personalizacion']:
         abort(404)
 
     cfg      = load_config()
@@ -345,8 +389,71 @@ def configuracion_tab(tab):
         datos=datos, guardado=guardado
     )
 
+@app.route('/configuracion/precios', methods=['GET'])
+def configuracion_precios():
+    precios = obtener_todos_los_precios()
+    return render_template('configuracion/precios.html',
+        tabs=SUBTABS, active='precios',
+        guardado=False,
+        precios=precios,
+        precio_edit=None
+    )
 
-# ——— IA personalizada ———
+@app.route('/configuracion/precios/editar/<int:pid>', methods=['GET'])
+def configuracion_precio_editar(pid):
+    precios     = obtener_todos_los_precios()
+    precio_edit = obtener_precio_por_id(pid)
+    return render_template('configuracion/precios.html',
+        tabs=SUBTABS, active='precios',
+        guardado=False,
+        precios=precios,
+        precio_edit=precio_edit
+    )
+
+@app.route('/configuracion/precios/guardar', methods=['POST'])
+def configuracion_precio_guardar():
+    data = request.form.to_dict()
+    conn   = get_db_connection()
+    cursor = conn.cursor()
+    if data.get('id'):
+        cursor.execute("""
+            UPDATE precios
+               SET servicio=%s, descripcion=%s, precio=%s, moneda=%s
+             WHERE id=%s;
+        """, (
+            data['servicio'],
+            data.get('descripcion',''),
+            data['precio'],
+            data['moneda'],
+            data['id']
+        ))
+    else:
+        cursor.execute("""
+            INSERT INTO precios (servicio, descripcion, precio, moneda)
+            VALUES (%s, %s, %s, %s);
+        """, (
+            data['servicio'],
+            data.get('descripcion',''),
+            data['precio'],
+            data['moneda']
+        ))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return redirect(url_for('configuracion_precios'))
+
+@app.route('/configuracion/precios/borrar/<int:pid>', methods=['POST'])
+def configuracion_precio_borrar(pid):
+    conn   = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM precios WHERE id=%s;", (pid,))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return redirect(url_for('configuracion_precios'))
+
+
+# ——— IA personalizada, detección y alertas (sin cambios) ———
 def responder_con_ia(mensaje_usuario):
     cfg            = load_config()
     neg            = cfg['negocio']
@@ -412,49 +519,33 @@ def guardar_conversacion(numero, mensaje, respuesta):
         ) ENGINE=InnoDB;
     ''')
     cursor.execute(
-        "INSERT INTO conversaciones (numero, mensaje, respuesta) VALUES (%s,%s,%s)",
+        "INSERT INTO conversaciones (numero, mensaje, respuesta) VALUES (%s,%s,%s);",
         (numero, mensaje, respuesta)
     )
     conn.commit()
     cursor.close()
     conn.close()
 
-# ——— Detección y alerta de intervención humana ———
+
 def detectar_intervencion_humana(mensaje_usuario, respuesta_ia):
     texto = mensaje_usuario.lower()
-
-    # 1) Patrón genérico: “hablar con …” o “ponme con …”
     if 'hablar con ' in texto or 'ponme con ' in texto:
         return True
-
-    # 2) Lista amplia de disparadores (Español)
     disparadores = [
-        # Hablar con…
         'hablar con persona', 'hablar con un asesor', 'hablar con un agente',
         'hablar con alguien', 'quiero un asesor', 'quiero un agente',
-        # Humano / humano
         'ponme con humano', 'ponme con un humano', 'solo un humano',
         'solo un agente humano', 'solo un asesor humano',
-        # Atención…
         'atención personalizada', 'atención humana', 'atención de un humano',
         'atención de una persona', 'atención de un agente',
-        # Soporte…
         'soporte técnico', 'soporte humano', 'soporte de un agente',
-        # Representante…
-        'hablar con representante', 'representante de ventas',
-        'un representante', 'contactar a un representante',
-        # Emergencia / supervisor
-        'es urgente', 'supervisor', 'quien me supervise', 'nivel supervisor',
-        # Otros…
-        'no me resuelve', 'necesito ayuda humana', 'necesito persona real',
-        'quiero un humano', 'quiero hablar a un humano',
-        'necesito un representante'
+        'representante de ventas', 'contactar a un representante',
+        'es urgente', 'supervisor', 'nivel supervisor',
+        'no me resuelve', 'necesito ayuda humana', 'quiero un humano'
     ]
     for frase in disparadores:
         if frase in texto:
             return True
-
-    # 3) Disparadores en la respuesta de la IA (si menciona que canaliza)
     respuesta = respuesta_ia.lower()
     canalizaciones = [
         'te canalizaré', 'un asesor te contactará', 'te paso con',
@@ -463,23 +554,21 @@ def detectar_intervencion_humana(mensaje_usuario, respuesta_ia):
     for tag in canalizaciones:
         if tag in respuesta:
             return True
-
     return False
 
+
 def resumen_rafa(numero):
-    # 1) Obtenemos las últimas X entradas (usuario + IA)
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute(
         "SELECT mensaje, respuesta FROM conversaciones "
-        "WHERE numero=%s ORDER BY timestamp DESC LIMIT 10",
+        "WHERE numero=%s ORDER BY timestamp DESC LIMIT 10;",
         (numero,)
     )
     rows = cursor.fetchall()
     cursor.close()
     conn.close()
 
-    # 2) Construimos el texto de la conversación, intercalando roles
     partes = []
     for row in reversed(rows):
         partes.append(f"Usuario: {row['mensaje']}")
@@ -487,7 +576,6 @@ def resumen_rafa(numero):
             partes.append(f"IA: {row['respuesta']}")
     conversa = "\n".join(partes)
 
-    # 3) Pedimos a la IA un resumen tipo RAFA
     system = """
 Eres un asistente que crea resúmenes estilo RAFA: muy completos pero concisos, 
 capturando los puntos clave en un solo párrafo.
@@ -507,32 +595,27 @@ Resumen de la siguiente conversación con el cliente (solo un párrafo):
             temperature=0.5,
             max_tokens=300
         )
-        resumen = resp.choices[0].message.content.strip()
+        return resp.choices[0].message.content.strip()
     except Exception as e:
         app.logger.error(f"🔴 Error generando resumen RAFA: {e}")
-        # Fallback a un mini-resumen manual muy básico
-        resumen = "El cliente solicitó atención personalizada."
+        return "El cliente solicitó atención personalizada."
 
-    return resumen
 
 def enviar_template_alerta(nombre, numero_cliente, mensaje_clave, resumen):
-    # Sanitizar para WhatsApp HSM: quitar saltos de línea y tabs, comprimir espacios
     def sanitizar(texto):
-        # reemplaza saltos de línea y tabs por un espacio
-        clean = texto.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
-        # colapsa múltiples espacios en uno solo
+        clean = texto.replace('\n',' ').replace('\r',' ').replace('\t',' ')
         return ' '.join(clean.split())
 
-    nombre_clean         = sanitizar(nombre)
-    mensaje_clean        = sanitizar(mensaje_clave)
-    resumen_clean        = sanitizar(resumen)
+    nombre_clean  = sanitizar(nombre)
+    mensaje_clean = sanitizar(mensaje_clave)
+    resumen_clean = sanitizar(resumen)
 
     url     = f"https://graph.facebook.com/v17.0/{MI_NUMERO_BOT}/messages"
     headers = {
         'Authorization': f'Bearer {WHATSAPP_TOKEN}',
         'Content-Type': 'application/json'
     }
-    alert_dest = f"+{ALERT_NUMBER}"   # <-- Tu número personal con código de país
+    alert_dest = f"+{ALERT_NUMBER}"
     payload = {
         "messaging_product": "whatsapp",
         "to": alert_dest,
@@ -551,28 +634,19 @@ def enviar_template_alerta(nombre, numero_cliente, mensaje_clave, resumen):
             }]
         }
     }
-    app.logger.info(f"📤 Alerta payload limpio: {payload}")
+    app.logger.info(f"📤 Alerta payload: {payload}")
     try:
         r = requests.post(url, headers=headers, json=payload)
-        app.logger.info(f"📤 Alerta enviada: {r.status_code} – {r.text}")
+        app.logger.info(f"📤 Alerta enviada: {r.status_code} {r.text}")
     except Exception as e:
         app.logger.error(f"🔴 Error enviando alerta: {e}")
 
 
 @app.route('/test-alerta')
 def test_alerta():
-    app.logger.info("🧪 Entramos a /test-alerta")
-
-    nombre  = "Prueba"
-    numero  = "524491182201"  # con código de país
-    mensaje = "Prueba de alerta manual"   # sin saltos de línea
-    # Compactamos el resumen en una sola línea
-    resumen = "Usuario: prueba. IA: respuesta de prueba."
-
-    # Usamos tu función que ya elimina \n y tabs
-    enviar_template_alerta(nombre, numero, mensaje, resumen)
-
-    return "🚀 Test alerta disparada. Revisa tu WhatsApp."
+    app.logger.info("🧪 Test alerta")
+    enviar_template_alerta("Prueba", "524491182201", "Mensaje clave", "Resumen de prueba.")
+    return "🚀 Test alerta disparada."
 
 
 if __name__ == '__main__':
