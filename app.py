@@ -16,7 +16,6 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "cualquier-cosa")
 app.logger.setLevel(logging.INFO)
 
-
 # ——— Env vars ———
 VERIFY_TOKEN   = os.getenv("VERIFY_TOKEN")
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
@@ -28,13 +27,11 @@ DB_NAME        = os.getenv("DB_NAME")
 MI_NUMERO_BOT  = os.getenv("MI_NUMERO_BOT")
 ALERT_NUMBER   = os.getenv("ALERT_NUMBER", "524491182201")
 
-
 client = OpenAI(api_key=OPENAI_API_KEY)
 IA_ESTADOS = {}
 
 # ——— Subpestañas válidas ———
 SUBTABS = ['negocio', 'personalizacion', 'precios']
-
 
 def get_db_connection():
     return mysql.connector.connect(
@@ -44,7 +41,6 @@ def get_db_connection():
         database=DB_NAME,
         ssl_ca="/etc/ssl/certs/ca-certificates.crt"
     )
-
 
 # ——— Configuración en MySQL ———
 def load_config():
@@ -89,7 +85,6 @@ def load_config():
     }
     return {'negocio': negocio, 'personalizacion': personalizacion}
 
-
 def save_config(cfg_all):
     neg = cfg_all.get('negocio', {})
     per = cfg_all.get('personalizacion', {})
@@ -128,7 +123,6 @@ def save_config(cfg_all):
     conn.commit()
     cursor.close()
     conn.close()
-
 
 # ——— CRUD y helpers para 'precios' ———
 def obtener_todos_los_precios():
@@ -175,8 +169,206 @@ def obtener_precio(servicio_nombre: str):
         return Decimal(res[0]), res[1]
     return None
 
+# ——— Memoria de conversación ———
+def obtener_historial(numero, limite=10):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT mensaje, respuesta FROM conversaciones "
+        "WHERE numero=%s ORDER BY timestamp DESC LIMIT %s;",
+        (numero, limite)
+    )
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return list(reversed(rows))
 
-# ——— Webhook verification & reception ———
+# ——— Función IA con contexto y precios ———
+def responder_con_ia(mensaje_usuario, numero):
+    cfg            = load_config()
+    neg            = cfg['negocio']
+    ia_nombre      = neg.get('ia_nombre', 'Asistente')
+    negocio_nombre = neg.get('negocio_nombre', '')
+    descripcion    = neg.get('descripcion', '')
+    que_hace       = neg.get('que_hace', '')
+
+    # Inyecto tabla de precios
+    precios = obtener_todos_los_precios()
+    lista_precios = "\n".join(
+        f"- {p['servicio']}: {p['precio']} {p['moneda']}"
+        for p in precios
+    )
+
+    system_prompt = f"""
+Eres **{ia_nombre}**, asistente virtual de **{negocio_nombre}**.
+Descripción del negocio:
+{descripcion}
+
+Tus responsabilidades:
+{que_hace}
+
+Servicios y tarifas actuales:
+{lista_precios}
+
+Mantén siempre un tono profesional y conciso.
+""".strip()
+
+    # Agrego historial
+    historial = obtener_historial(numero)
+    messages_chain = [{'role':'system', 'content': system_prompt}]
+    for entry in historial:
+        messages_chain.append({'role':'user',      'content': entry['mensaje']})
+        messages_chain.append({'role':'assistant', 'content': entry['respuesta']})
+    messages_chain.append({'role':'user', 'content': mensaje_usuario})
+
+    try:
+        resp = client.chat.completions.create(
+            model='gpt-4',
+            messages=messages_chain
+        )
+        return resp.choices[0].message.content.strip()
+    except Exception as e:
+        app.logger.error(f"🔴 OpenAI error: {e}")
+        return 'Lo siento, hubo un error con la IA.'
+
+# ——— Envío WhatsApp y guardado de conversación ———
+def enviar_mensaje(numero, texto):
+    url     = f"https://graph.facebook.com/v17.0/{MI_NUMERO_BOT}/messages"
+    headers = {
+        'Authorization': f'Bearer {WHATSAPP_TOKEN}',
+        'Content-Type': 'application/json'
+    }
+    payload = {
+        'messaging_product': 'whatsapp',
+        'to': numero,
+        'type': 'text',
+        'text': {'body': texto}
+    }
+    try:
+        r = requests.post(url, headers=headers, json=payload)
+        app.logger.info(f"📤 WhatsApp API: {r.status_code} {r.text}")
+    except Exception as e:
+        app.logger.error(f"🔴 Error enviando WhatsApp: {e}")
+
+def guardar_conversacion(numero, mensaje, respuesta):
+    conn   = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS conversaciones (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          numero VARCHAR(20),
+          mensaje TEXT,
+          respuesta TEXT,
+          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB;
+    ''')
+    cursor.execute(
+        "INSERT INTO conversaciones (numero, mensaje, respuesta) VALUES (%s,%s,%s);",
+        (numero, mensaje, respuesta)
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+# ——— Detección y alerta ———
+def detectar_intervencion_humana(mensaje_usuario, respuesta_ia):
+    texto = mensaje_usuario.lower()
+    if 'hablar con ' in texto or 'ponme con ' in texto:
+        return True
+    disparadores = [
+        'hablar con persona', 'hablar con un asesor', 'hablar con un agente',
+        'quiero un asesor', 'atención humana', 'soporte técnico',
+        'es urgente', 'necesito ayuda humana'
+    ]
+    for frase in disparadores:
+        if frase in texto:
+            return True
+    respuesta = respuesta_ia.lower()
+    canalizaciones = [
+        'te canalizaré', 'un asesor te contactará', 'te paso con'
+    ]
+    for tag in canalizaciones:
+        if tag in respuesta:
+            return True
+    return False
+
+def resumen_rafa(numero):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT mensaje, respuesta FROM conversaciones "
+        "WHERE numero=%s ORDER BY timestamp DESC LIMIT 10;",
+        (numero,)
+    )
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    partes = []
+    for row in reversed(rows):
+        partes.append(f"Usuario: {row['mensaje']}")
+        if row['respuesta']:
+            partes.append(f"IA: {row['respuesta']}")
+    conversa = "\n".join(partes)
+
+    system = """
+Eres un asistente que crea resúmenes estilo RAFA: muy completos pero concisos, 
+capturando los puntos clave en un solo párrafo.
+""".strip()
+    user_prompt = f"Resumen de la siguiente conversación:\n\n{conversa}"
+    try:
+        resp = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user",   "content": user_prompt}
+            ],
+            temperature=0.5,
+            max_tokens=300
+        )
+        return resp.choices[0].message.content.strip()
+    except Exception as e:
+        app.logger.error(f"🔴 Error generando resumen RAFA: {e}")
+        return "El cliente solicitó atención personalizada."
+
+def enviar_template_alerta(nombre, numero_cliente, mensaje_clave, resumen):
+    def sanitizar(texto):
+        clean = texto.replace('\n',' ').replace('\r',' ').replace('\t',' ')
+        return ' '.join(clean.split())
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": f"+{ALERT_NUMBER}",
+        "type": "template",
+        "template": {
+            "name": "alerta_intervencion",
+            "language": {"code": "es_MX"},
+            "components": [{
+                "type": "body",
+                "parameters": [
+                    {"type":"text","text":sanitizar(nombre)},
+                    {"type":"text","text":sanitizar(numero_cliente)},
+                    {"type":"text","text":sanitizar(mensaje_clave)},
+                    {"type":"text","text":sanitizar(resumen)}
+                ]
+            }]
+        }
+    }
+    try:
+        r = requests.post(
+            f"https://graph.facebook.com/v17.0/{MI_NUMERO_BOT}/messages",
+            headers={'Authorization':f'Bearer {WHATSAPP_TOKEN}','Content-Type':'application/json'},
+            json=payload
+        )
+        app.logger.info(f"📤 Alerta enviada: {r.status_code} {r.text}")
+    except Exception as e:
+        app.logger.error(f"🔴 Error enviando alerta: {e}")
+
+@app.route('/test-alerta')
+def test_alerta():
+    enviar_template_alerta("Prueba", "524491182201", "Mensaje clave", "Resumen de prueba.")
+    return "🚀 Test alerta disparada."
+
+# ——— Webhook ———
 @app.route('/webhook', methods=['GET'])
 def webhook_verification():
     if request.args.get('hub.verify_token') == VERIFY_TOKEN:
@@ -201,7 +393,7 @@ def recibir_mensaje():
         if numero == MI_NUMERO_BOT:
             return 'OK', 200
 
-        # — prioridad mensajes de precios —
+        # precio de ...
         if texto.lower().startswith('precio de '):
             servicio = texto[10:].strip()
             info = obtener_precio(servicio)
@@ -209,22 +401,17 @@ def recibir_mensaje():
                 precio, moneda = info
                 respuesta = f"El precio de *{servicio}* es {precio} {moneda}."
             else:
-                respuesta = (
-                  f"No encontré tarifa para *{servicio}*.\n"
-                  "Revisa la pestaña de *Precios* en la configuración."
-                )
+                respuesta = "No encontré tarifa para *{servicio}*."
             enviar_mensaje(numero, respuesta)
             guardar_conversacion(numero, texto, respuesta)
             return 'OK', 200
 
-        # — luego, IA normal —
+        # IA normal
         IA_ESTADOS.setdefault(numero, True)
         respuesta = ""
         if IA_ESTADOS[numero]:
-            respuesta = responder_con_ia(texto)
+            respuesta = responder_con_ia(texto, numero)
             enviar_mensaje(numero, respuesta)
-
-            app.logger.info(f"🔎 Mensaje para detección: '{texto}'")
             if detectar_intervencion_humana(texto, respuesta):
                 resumen = resumen_rafa(numero)
                 enviar_template_alerta("Sin nombre", numero, texto, resumen)
@@ -237,8 +424,7 @@ def recibir_mensaje():
 
     return 'OK', 200
 
-
-# ——— Rutas de UI ———
+# ——— UI ———
 @app.route('/')
 def inicio():
     return redirect(url_for('home'))
@@ -247,11 +433,10 @@ def inicio():
 def home():
     period = request.args.get('period', 'week')
     now    = datetime.now()
-    start  = now - timedelta(days=30) if period=='month' else now - timedelta(days=7)
+    start  = now - (timedelta(days=30) if period=='month' else timedelta(days=7))
 
     conn   = get_db_connection()
     cursor = conn.cursor()
-
     cursor.execute(
         "SELECT COUNT(DISTINCT numero) FROM conversaciones WHERE timestamp>= %s;",
         (start,)
@@ -332,14 +517,12 @@ def enviar_manual():
     numero    = request.form['numero']
     texto     = request.form['texto']
     respuesta = ""
-
     if IA_ESTADOS.get(numero, True):
-        respuesta = responder_con_ia(texto)
+        respuesta = responder_con_ia(texto, numero)
         enviar_mensaje(numero, respuesta)
         if detectar_intervencion_humana(texto, respuesta):
             resumen = resumen_rafa(numero)
             enviar_template_alerta("Sin nombre", numero, texto, resumen)
-
     guardar_conversacion(numero, texto, respuesta)
     return redirect(url_for('ver_chat', numero=numero))
 
@@ -354,8 +537,7 @@ def eliminar_chat(numero):
     IA_ESTADOS.pop(numero, None)
     return redirect(url_for('ver_chats'))
 
-
-# ——— Vistas de configuración ———
+# ——— Configuración ———
 @app.route('/configuracion/<tab>', methods=['GET','POST'])
 def configuracion_tab(tab):
     if tab not in ['negocio','personalizacion']:
@@ -363,7 +545,6 @@ def configuracion_tab(tab):
 
     cfg      = load_config()
     guardado = False
-
     if request.method == 'POST':
         if tab == 'negocio':
             cfg['negocio'] = {
@@ -431,7 +612,7 @@ def configuracion_precio_guardar():
     else:
         cursor.execute("""
             INSERT INTO precios (servicio, descripcion, precio, moneda)
-            VALUES (%s, %s, %s, %s);
+            VALUES (%s,%s,%s,%s);
         """, (
             data['servicio'],
             data.get('descripcion',''),
@@ -452,203 +633,6 @@ def configuracion_precio_borrar(pid):
     cursor.close()
     conn.close()
     return redirect(url_for('configuracion_precios'))
-
-
-# ——— IA personalizada, detección y alertas (sin cambios) ———
-def responder_con_ia(mensaje_usuario):
-    cfg            = load_config()
-    neg            = cfg['negocio']
-    ia_nombre      = neg.get('ia_nombre', 'Asistente')
-    negocio_nombre = neg.get('negocio_nombre', '')
-    descripcion    = neg.get('descripcion', '')
-    que_hace       = neg.get('que_hace', '')
-
-    system_prompt = f"""
-Eres **{ia_nombre}**, asistente virtual de **{negocio_nombre}**.
-Descripción del negocio:
-{descripcion}
-
-Tus responsabilidades:
-{que_hace}
-
-Mantén siempre un tono profesional y conciso.
-""".strip()
-
-    try:
-        resp = client.chat.completions.create(
-            model='gpt-4',
-            messages=[
-                {'role':'system',  'content': system_prompt},
-                {'role':'user',    'content': mensaje_usuario}
-            ]
-        )
-        return resp.choices[0].message.content.strip()
-    except Exception as e:
-        app.logger.error(f"🔴 OpenAI error: {e}")
-        return 'Lo siento, hubo un error con la IA.'
-
-
-def enviar_mensaje(numero, texto):
-    url     = f"https://graph.facebook.com/v17.0/{MI_NUMERO_BOT}/messages"
-    headers = {
-        'Authorization': f'Bearer {WHATSAPP_TOKEN}',
-        'Content-Type': 'application/json'
-    }
-    payload = {
-        'messaging_product': 'whatsapp',
-        'to': numero,
-        'type': 'text',
-        'text': {'body': texto}
-    }
-    try:
-        r = requests.post(url, headers=headers, json=payload)
-        app.logger.info(f"📤 WhatsApp API: {r.status_code} {r.text}")
-    except Exception as e:
-        app.logger.error(f"🔴 Error enviando WhatsApp: {e}")
-
-
-def guardar_conversacion(numero, mensaje, respuesta):
-    conn   = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS conversaciones (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          numero VARCHAR(20),
-          mensaje TEXT,
-          respuesta TEXT,
-          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB;
-    ''')
-    cursor.execute(
-        "INSERT INTO conversaciones (numero, mensaje, respuesta) VALUES (%s,%s,%s);",
-        (numero, mensaje, respuesta)
-    )
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-
-def detectar_intervencion_humana(mensaje_usuario, respuesta_ia):
-    texto = mensaje_usuario.lower()
-    if 'hablar con ' in texto or 'ponme con ' in texto:
-        return True
-    disparadores = [
-        'hablar con persona', 'hablar con un asesor', 'hablar con un agente',
-        'hablar con alguien', 'quiero un asesor', 'quiero un agente',
-        'ponme con humano', 'ponme con un humano', 'solo un humano',
-        'solo un agente humano', 'solo un asesor humano',
-        'atención personalizada', 'atención humana', 'atención de un humano',
-        'atención de una persona', 'atención de un agente',
-        'soporte técnico', 'soporte humano', 'soporte de un agente',
-        'representante de ventas', 'contactar a un representante',
-        'es urgente', 'supervisor', 'nivel supervisor',
-        'no me resuelve', 'necesito ayuda humana', 'quiero un humano'
-    ]
-    for frase in disparadores:
-        if frase in texto:
-            return True
-    respuesta = respuesta_ia.lower()
-    canalizaciones = [
-        'te canalizaré', 'un asesor te contactará', 'te paso con',
-        'te transfiero a', 'te comunicaré con', 'llamará un agente'
-    ]
-    for tag in canalizaciones:
-        if tag in respuesta:
-            return True
-    return False
-
-
-def resumen_rafa(numero):
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute(
-        "SELECT mensaje, respuesta FROM conversaciones "
-        "WHERE numero=%s ORDER BY timestamp DESC LIMIT 10;",
-        (numero,)
-    )
-    rows = cursor.fetchall()
-    cursor.close()
-    conn.close()
-
-    partes = []
-    for row in reversed(rows):
-        partes.append(f"Usuario: {row['mensaje']}")
-        if row['respuesta']:
-            partes.append(f"IA: {row['respuesta']}")
-    conversa = "\n".join(partes)
-
-    system = """
-Eres un asistente que crea resúmenes estilo RAFA: muy completos pero concisos, 
-capturando los puntos clave en un solo párrafo.
-""".strip()
-    user_prompt = f"""
-Resumen de la siguiente conversación con el cliente (solo un párrafo):
-
-{conversa}
-"""
-    try:
-        resp = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user",   "content": user_prompt}
-            ],
-            temperature=0.5,
-            max_tokens=300
-        )
-        return resp.choices[0].message.content.strip()
-    except Exception as e:
-        app.logger.error(f"🔴 Error generando resumen RAFA: {e}")
-        return "El cliente solicitó atención personalizada."
-
-
-def enviar_template_alerta(nombre, numero_cliente, mensaje_clave, resumen):
-    def sanitizar(texto):
-        clean = texto.replace('\n',' ').replace('\r',' ').replace('\t',' ')
-        return ' '.join(clean.split())
-
-    nombre_clean  = sanitizar(nombre)
-    mensaje_clean = sanitizar(mensaje_clave)
-    resumen_clean = sanitizar(resumen)
-
-    url     = f"https://graph.facebook.com/v17.0/{MI_NUMERO_BOT}/messages"
-    headers = {
-        'Authorization': f'Bearer {WHATSAPP_TOKEN}',
-        'Content-Type': 'application/json'
-    }
-    alert_dest = f"+{ALERT_NUMBER}"
-    payload = {
-        "messaging_product": "whatsapp",
-        "to": alert_dest,
-        "type": "template",
-        "template": {
-            "name": "alerta_intervencion",
-            "language": {"code": "es_MX"},
-            "components": [{
-                "type": "body",
-                "parameters": [
-                    {"type": "text", "text": nombre_clean},
-                    {"type": "text", "text": f"+{numero_cliente}"},
-                    {"type": "text", "text": mensaje_clean},
-                    {"type": "text", "text": resumen_clean}
-                ]
-            }]
-        }
-    }
-    app.logger.info(f"📤 Alerta payload: {payload}")
-    try:
-        r = requests.post(url, headers=headers, json=payload)
-        app.logger.info(f"📤 Alerta enviada: {r.status_code} {r.text}")
-    except Exception as e:
-        app.logger.error(f"🔴 Error enviando alerta: {e}")
-
-
-@app.route('/test-alerta')
-def test_alerta():
-    app.logger.info("🧪 Test alerta")
-    enviar_template_alerta("Prueba", "524491182201", "Mensaje clave", "Resumen de prueba.")
-    return "🚀 Test alerta disparada."
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv('PORT','5000')))
