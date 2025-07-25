@@ -1,4 +1,5 @@
 import os
+import logging
 import requests
 import mysql.connector
 from flask import (
