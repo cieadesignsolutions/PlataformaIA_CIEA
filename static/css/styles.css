@@ -554,7 +554,7 @@ body {
 }
 
 .chat-list-header {
-    padding: 15px 20px 5px 20px;
+    padding: 0px 0px 0px 10px;
     font-family: 'Segoe UI', sans-serif;
     background-color: transparent;
 }
