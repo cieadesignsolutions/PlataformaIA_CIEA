@@ -8,11 +8,26 @@
 <div class="chat-layout-v2">
   <!-- Lista de chats -->
   <aside class="chat-list-v2">
-    {% for chat in chats %}
-      <a href="/chats/{{ chat.numero }}" class="{{ 'selected' if selected == chat.numero else '' }}">
-        {{ chat.numero }}
-      </a>
-    {% endfor %}
+<div class="chat-list-tools">
+  <button class="add-contact-btn">+ Agregar Contacto</button>
+  <input type="text" placeholder="Buscar chats..." class="search-input">
+</div>
+
+<div class="chat-items">
+  {% for chat in chats %}
+  <a href="/chats/{{ chat.numero }}" class="chat-item {% if selected == chat.numero %}selected{% endif %}">
+    <div class="chat-avatar">
+      <img src="https://cdn-icons-png.flaticon.com/512/747/747376.png" alt="Avatar">
+    </div>
+    <div class="chat-info">
+      <div class="chat-name">{{ chat.numero }}</div>
+      <div class="chat-preview">Mensaje reciente...</div>
+    </div>
+    <div class="chat-meta">26/7/2025</div>
+  </a>
+  {% endfor %}
+</div>
+
   </aside>
 
   <!-- Chat principal -->
