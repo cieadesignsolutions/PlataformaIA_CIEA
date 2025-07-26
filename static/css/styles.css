@@ -703,7 +703,7 @@ body {
   display: flex;
   height: calc(100vh - 80px);
   max-width: 1280px;
-  margin: auto;
+  margin: initial;
   box-shadow: 0 0 10px rgba(0,0,0,0.3);
   border-radius: 10px;
   overflow: hidden;
