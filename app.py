@@ -1,3 +1,5 @@
+from datetime import datetime
+import pytz
 import os
 import logging
 import requests
@@ -10,6 +12,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from decimal import Decimal
+tz_mx = pytz.timezone('America/Mexico_City')
 
 load_dotenv()
 app = Flask(__name__)
@@ -253,19 +256,25 @@ def enviar_mensaje(numero, texto):
 def guardar_conversacion(numero, mensaje, respuesta):
     conn   = get_db_connection()
     cursor = conn.cursor()
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS conversaciones (
           id INT AUTO_INCREMENT PRIMARY KEY,
           numero VARCHAR(20),
           mensaje TEXT,
           respuesta TEXT,
-          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+          timestamp DATETIME
         ) ENGINE=InnoDB;
     ''')
+
+    # Guardamos en UTC real
+    timestamp_utc = datetime.utcnow()
+
     cursor.execute(
-        "INSERT INTO conversaciones (numero, mensaje, respuesta) VALUES (%s,%s,%s);",
-        (numero, mensaje, respuesta)
+        "INSERT INTO conversaciones (numero, mensaje, respuesta, timestamp) VALUES (%s, %s, %s, %s);",
+        (numero, mensaje, respuesta, timestamp_utc)
     )
+
     conn.commit()
     cursor.close()
     conn.close()
@@ -495,6 +504,12 @@ def ver_chat(numero):
         (numero,)
     )
     msgs = cursor.fetchall()
+
+    # ✅ Convertir a zona horaria de México (solo si hay timestamp)
+    for msg in msgs:
+        if msg.get('timestamp'):
+            msg['timestamp'] = msg['timestamp'].replace(tzinfo=pytz.UTC).astimezone(tz_mx)
+
     cursor.execute(
         "SELECT numero, MAX(timestamp) AS ultima "
         "FROM conversaciones GROUP BY numero ORDER BY ultima DESC;"
