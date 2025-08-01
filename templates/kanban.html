@@ -1,51 +1,41 @@
-{% extends "base.html" %}
-{% block content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/kanban.css') }}">
+  <!-- justo antes de cerrar </body> -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+  <script>
+  window.addEventListener('DOMContentLoaded', () => {
+    // 1) Inicializa Sortable en cada columna
+    document.querySelectorAll('.column-list').forEach(list => {
+      Sortable.create(list, {
+        group: 'kanban',
+        animation: 150,
+        ghostClass: 'sortable-ghost',    // clase para el elemento fantasma
+        scroll: true,                    // habilita autoscroll
+        scrollSensitivity: 60,
+        scrollSpeed: 10,
+        onEnd: evt => {
+          const numero = evt.item.dataset.chatNum;
+          const nuevaCol = evt.to.closest('.kanban-column').dataset.colId;
+          fetch('/kanban/mover', {
+            method: 'POST',
+            headers: { 'Content-Type':'application/json' },
+            body: JSON.stringify({ numero, columna_id: nuevaCol })
+          });
+        }
+      });
+    });
 
-<div id="kanban-board" class="kanban-board">
-  {% for col in columnas %}
-  <div class="kanban-column" data-col-id="{{ col.id }}">
-    <div class="column-header">
-      <!-- Icono normal sin filtro -->
-      <img src="{{ col.icono }}" class="col-icon" alt="">
-      <h3 contenteditable="true" data-col-id="{{ col.id }}" class="col-name">
-        {{ col.nombre }}
-      </h3>
-      <button class="add-chat-btn" title="Agregar aquí">+</button>
-    </div>
-    <div class="column-list">
-      {% for chat in chats if chat.columna_id == col.id %}
-      <div class="kanban-card" data-chat-num="{{ chat.numero }}">
-        <div class="card-top">
-          <img src="{{ chat.avatar or url_for('static',filename='icons/default-avatar.png') }}"
-               class="card-avatar">
-          {% if chat.canal == 'whatsapp' %}
-            <img src="{{ url_for('static',filename='icons/whatsapp.png') }}"
-                 class="card-canal" title="WhatsApp">
-          {% endif %}
-          <!-- podrías añadir else-if para Facebook/IG aquí -->
-        </div>
-        <div class="card-body">
-          <strong>{{ chat.numero }}</strong>
-          <small class="card-msg">{{ chat.ultimo_mensaje }}</small>
-        </div>
-        <div class="card-footer">
-          <small class="card-time">
-            {{ chat.ultima_fecha.strftime('%Y-%m-%d %H:%M') }}
-          </small>
-          {% if chat.sin_leer > 0 %}
-            <span class="card-unread">{{ chat.sin_leer }}</span>
-          {% endif %}
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endfor %}
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-<script>
-// (mantén aquí tu inicialización de Sortable y fetch para mover)
-</script>
-{% endblock %}
+    // 2) Modal al hacer clic (mantener núm. de chat correctamente)
+    document.querySelectorAll('.kanban-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const num = card.dataset.chatNum;
+        fetch(`/chats/${num}?partial=1`)
+          .then(r => r.text())
+          .then(html => {
+            const modal = document.createElement('div');
+            modal.className = 'kanban-modal';
+            modal.innerHTML = html;
+            document.body.appendChild(modal);
+          });
+      });
+    });
+  });
+  </script>
