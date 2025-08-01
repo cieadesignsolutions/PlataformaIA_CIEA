@@ -649,5 +649,52 @@ def configuracion_precio_borrar(pid):
     conn.close()
     return redirect(url_for('configuracion_precios'))
 
+@app.route('/kanban')
+def ver_kanban():
+    conn   = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    # 1) Traemos las columnas (etapas), en orden
+    cursor.execute("SELECT * FROM kanban_columnas ORDER BY id;")
+    columnas = cursor.fetchall()
+
+    # 2) Traemos todos los chats con su última fecha y etapa actual
+    cursor.execute("""
+      SELECT m.numero,
+             MAX(c.timestamp) AS ultima_fecha,
+             cm.columna_id,
+             c2.mensaje AS ultimo_mensaje
+        FROM chat_meta cm
+        JOIN conversaciones c    ON c.numero = cm.numero
+        JOIN conversaciones c2   ON c2.numero = cm.numero AND c2.timestamp = (
+            SELECT MAX(timestamp)
+            FROM conversaciones
+            WHERE numero = cm.numero
+        )
+       GROUP BY m.numero, cm.columna_id
+       ORDER BY ultima_fecha DESC;
+    """)
+    # Nota: si no tienes tabla 'm', reemplaza el alias por cm.numero directamente
+    chats = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+    return render_template('kanban.html',
+        columnas=columnas,
+        chats=chats
+    )
+@app.route('/kanban/mover', methods=['POST'])
+def kanban_mover():
+    data = request.get_json()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+      "UPDATE chat_meta SET columna_id=%s WHERE numero=%s;",
+      (data['columna_id'], data['numero'])
+    )
+    conn.commit(); cursor.close(); conn.close()
+    return '', 204
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -1,0 +1,31 @@
+.kanban-board { display:flex; gap:1rem; padding:1rem; overflow-x:auto; }
+.kanban-column {
+  background: var(--card-bg);
+  border-radius:8px; width:220px;
+  display:flex; flex-direction:column;
+}
+.column-header {
+  display:flex; align-items:center;
+  justify-content:space-between;
+  padding:0.5rem; border-bottom:1px solid var(--border-light);
+}
+.col-icon { width:24px; height:24px; margin-right:0.5rem; }
+.column-list { flex:1; padding:0.5rem; min-height:100px; }
+.kanban-card {
+  background:#fff; margin-bottom:0.5rem;
+  padding:0.5rem; border-radius:4px;
+  cursor:grab;
+}
+.kanban-card:active { cursor:grabbing; }
+
+/* Modal flotante */
+.kanban-modal {
+  position:fixed; top:0;left:0;right:0;bottom:0;
+  background:rgba(0,0,0,0.5);
+  display:flex; align-items:center; justify-content:center;
+  z-index:1000;
+}
+.kanban-modal > * {
+  background: #fff; width:80%; height:80%;
+  overflow:auto; position:relative; border-radius:8px;
+}

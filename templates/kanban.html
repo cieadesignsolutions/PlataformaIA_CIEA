@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Tablero Kanban{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/kanban.css') }}">
+
+<div id="kanban-board" class="kanban-board">
+  {% for col in columnas %}
+  <div class="kanban-column" data-col-id="{{ col.id }}">
+    <div class="column-header">
+      <img src="{{ col.icono }}" class="col-icon" alt="">
+      <h3>{{ col.nombre }}</h3>
+      <button class="add-chat-btn" title="Agregar aquí">+</button>
+    </div>
+    <div class="column-list" id="col-{{ col.id }}">
+      {% for chat in chats if chat.columna_id == col.id %}
+      <div class="kanban-card" data-chat-num="{{ chat.numero }}">
+        <strong>{{ chat.numero }}</strong><br>
+        <small>{{ chat.ultimo_mensaje[:25] }}…</small>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+  document.querySelectorAll('.column-list').forEach(el => {
+    new Sortable(el, {
+      group: 'kanban', animation: 150,
+      onEnd: evt => {
+        const numero = evt.item.dataset.chatNum;
+        const nuevaCol = evt.to.closest('.kanban-column').dataset.colId;
+        fetch('/kanban/mover', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ numero, columna_id: nuevaCol })
+        });
+      }
+    });
+  });
+
+  // Click en tarjeta abre modal flotante
+  document.querySelectorAll('.kanban-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const num = card.dataset.chatNum;
+      fetch(`/chats/${num}?partial=1`)
+        .then(r => r.text())
+        .then(html => {
+          const modal = document.createElement('div');
+          modal.className = 'kanban-modal';
+          modal.innerHTML = html;
+          document.body.appendChild(modal);
+        });
+    });
+  });
+</script>
+{% endblock %}
