@@ -29,3 +29,116 @@
   background: #fff; width:80%; height:80%;
   overflow:auto; position:relative; border-radius:8px;
 }
+/* ───── Backdrop general del board ───── */
+.kanban-board {
+  background: transparent;
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+/* ───── Columnas ───── */
+.kanban-column {
+  background: #1e1e2f;                /* gris muy oscuro */
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  width: 220px;
+}
+
+/* Cabecera de cada columna */
+.column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem;
+  background: #25253b;                /* un poco más claro que la columna */
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+}
+.column-header h3 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 600;
+  opacity: 1;
+}
+.column-header .col-icon {
+  filter: brightness(0) invert(1);   /* iconos claros */
+}
+
+/* Lista de tarjetas */
+.column-list {
+  flex: 1;
+  padding: 0.5rem;
+  background: #1e1e2f;
+}
+
+/* ───── Tarjetas ───── */
+.kanban-card {
+  background: #2a2a3d;                /* gris oscuro contrastante */
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  color: #f0f0f0;
+  cursor: grab;
+  transition: background 0.2s, border-color 0.2s;
+  position: relative;
+}
+
+/* Al arrastrar */
+.kanban-card:active {
+  cursor: grabbing;
+  background: #33334a;
+  border-color: rgba(255,255,255,0.2);
+}
+
+/* Texto y metadatos */
+.kanban-card strong {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 500;
+  color: #ffffff;
+}
+.kanban-card small {
+  display: block;
+  color: #cccccc;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ───── Botón “+” para agregar ───── */
+.add-chat-btn {
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 1.2rem;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.add-chat-btn:hover {
+  opacity: 1;
+}
+
+/* ───── Modal flotante ───── */
+.kanban-modal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+.kanban-modal > * {
+  background: #1e1e2f;
+  width: 80%;
+  height: 80%;
+  overflow: auto;
+  border-radius: 8px;
+  padding: 1rem;
+  color: #f0f0f0;
+}
