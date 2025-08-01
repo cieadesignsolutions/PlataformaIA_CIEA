@@ -62,8 +62,12 @@
   font-weight: 600;
   opacity: 1;
 }
+
+/* Iconos con sus colores normales (quitamos filtros) */
 .column-header .col-icon {
-  filter: brightness(0) invert(1);   /* iconos claros */
+  filter: none;
+  width: 24px;
+  height: 24px;
 }
 
 /* Lista de tarjetas */
@@ -74,24 +78,27 @@
 }
 
 /* ───── Tarjetas ───── */
+/* ── Ajustes de estilo para tarjetas Kanban ── */
+
+/* Hacemos el fondo más transparente */
 .kanban-card {
-  background: #2a2a3d;                /* gris oscuro contrastante */
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(42, 42, 61, 0.4);         /* 40% opacidad en lugar de sólido */
+  border: 2px solid rgba(255, 255, 255, 0.2); /* borde de 2px, más grueso */
   border-radius: 6px;
   padding: 0.75rem;
   margin-bottom: 0.5rem;
   color: #f0f0f0;
   cursor: grab;
   transition: background 0.2s, border-color 0.2s;
-  position: relative;
 }
 
-/* Al arrastrar */
+/* Al arrastrar, un poco más opaco y borde más marcado */
 .kanban-card:active {
   cursor: grabbing;
-  background: #33334a;
-  border-color: rgba(255,255,255,0.2);
+  background: rgba(51, 51, 74, 0.6);
+  border-color: rgba(255, 255, 255, 0.3);
 }
+
 
 /* Texto y metadatos */
 .kanban-card strong {
