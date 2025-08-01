@@ -16,6 +16,10 @@
       <div class="sidebar-title">SmartWhats</div>
       <ul class="sidebar-nav">
         <li><a href="{{ url_for('home') }}">Home</a></li>
+		<li class="{{ 'active' if request.path.startswith('/kanban') else '' }}">
+			<a href="{{ url_for('ver_kanban') }}">Kanban</a>
+		</li>
+
         <li><a href="{{ url_for('ver_chats') }}">Chats</a></li>
         <li><a href="{{ url_for('configuracion_tab', tab='negocio') }}">Configuración</a></li>
       </ul>
