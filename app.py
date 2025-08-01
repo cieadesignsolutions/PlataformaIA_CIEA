@@ -654,36 +654,54 @@ def ver_kanban():
     conn   = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
-    # 1) Traemos las columnas Kanban
+    # Columnas Kanban
     cursor.execute("SELECT * FROM kanban_columnas ORDER BY id;")
     columnas = cursor.fetchall()
 
-    # 2) Para cada chat, traemos su etapa, última fecha y último mensaje
+    # Chats con avatar, canal, última fecha, último mensaje y # sin leer
     cursor.execute("""
         SELECT
           cm.numero,
           cm.columna_id,
-          -- Subconsulta para el timestamp más reciente
-          (SELECT timestamp 
-             FROM conversaciones 
-            WHERE numero = cm.numero 
-            ORDER BY timestamp DESC 
-            LIMIT 1
-          ) AS ultima_fecha,
-          -- Subconsulta para el texto del último mensaje
-          (SELECT mensaje 
-             FROM conversaciones 
-            WHERE numero = cm.numero 
-            ORDER BY timestamp DESC 
-            LIMIT 1
-          ) AS ultimo_mensaje
+          c.ultima_fecha,
+          c.ultimo_mensaje,
+          cont.imagen_url    AS avatar,
+          cont.plataforma    AS canal,
+          IFNULL(unread.cnt, 0) AS sin_leer
         FROM chat_meta cm
-        ORDER BY ultima_fecha DESC;
+
+        -- subconsulta que devuelve un solo registro con fecha y mensaje
+        JOIN (
+          SELECT numero,
+                 MAX(timestamp) AS ultima_fecha,
+                 (SELECT mensaje 
+                    FROM conversaciones 
+                   WHERE numero = t.numero 
+                   ORDER BY timestamp DESC 
+                   LIMIT 1
+                 ) AS ultimo_mensaje
+            FROM conversaciones t
+           GROUP BY numero
+        ) AS c ON c.numero = cm.numero
+
+        LEFT JOIN contactos cont
+          ON cont.numero = cm.numero
+
+        -- contamos mensajes sin respuesta
+        LEFT JOIN (
+          SELECT numero, COUNT(*) AS cnt
+            FROM conversaciones
+           WHERE respuesta IS NULL
+           GROUP BY numero
+        ) AS unread
+          ON unread.numero = cm.numero
+
+        ORDER BY c.ultima_fecha DESC;
     """)
     chats = cursor.fetchall()
-
     cursor.close()
     conn.close()
+
     return render_template('kanban.html',
         columnas=columnas,
         chats=chats

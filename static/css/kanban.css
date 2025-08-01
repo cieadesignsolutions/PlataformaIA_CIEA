@@ -149,3 +149,68 @@
   padding: 1rem;
   color: #f0f0f0;
 }
+.kanban-board {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+/* 1) Columnas más anchas y scroll interno */
+.kanban-column {
+  width: 300px;           /* aumenta a 300px */
+  max-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+}
+
+.column-list {
+  flex: 1;
+  overflow-y: auto;       /* autoscroll vertical */
+  padding: 0.5rem;
+  background: rgba(30,30,47,0.4);
+}
+
+/* 2) Tarjetas semitransparentes con borde grueso */
+.kanban-card {
+  background: rgba(42,42,61,0.4);
+  border: 2px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  color: #f0f0f0;
+}
+
+/* Top: avatar y canal */
+.kanban-card .card-top {
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.card-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+}
+.card-canal {
+  width: 20px; height: 20px;
+}
+
+/* Body: número y mensaje */
+.card-body strong { color: #fff; }
+.card-body .card-msg {
+  display: block; color: #ccc; font-size: 0.85rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Footer: fecha y badge de sin leer */
+.card-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 0.5rem;
+}
+.card-time { font-size: 0.75rem; color: #aaa; }
+.card-unread {
+  background: #ff3b30; color: #fff;
+  border-radius: 50%; padding: 2px 6px; font-size: 0.75rem;
+}
+
+/* 4) Autoscroll para el main-content si en el futuro agregas muchas columnas */
+.main-content {
+  overflow-x: auto;
+}
