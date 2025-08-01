@@ -654,11 +654,11 @@ def ver_kanban():
     conn   = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
-    # Columnas Kanban
+    # 1) Cargamos las columnas Kanban
     cursor.execute("SELECT * FROM kanban_columnas ORDER BY id;")
     columnas = cursor.fetchall()
 
-    # Chats con avatar, canal, última fecha, último mensaje y # sin leer
+    # 2) Cargamos los chats con avatar, canal, última fecha, último mensaje y sin leer
     cursor.execute("""
         SELECT
           cm.numero,
@@ -670,24 +670,27 @@ def ver_kanban():
           IFNULL(unread.cnt, 0) AS sin_leer
         FROM chat_meta cm
 
-        -- subconsulta que devuelve un solo registro con fecha y mensaje
+        -- subconsulta para fecha y mensaje más reciente
         JOIN (
-          SELECT numero,
-                 MAX(timestamp) AS ultima_fecha,
-                 (SELECT mensaje 
-                    FROM conversaciones 
-                   WHERE numero = t.numero 
-                   ORDER BY timestamp DESC 
-                   LIMIT 1
-                 ) AS ultimo_mensaje
-            FROM conversaciones t
-           GROUP BY numero
-        ) AS c ON c.numero = cm.numero
+          SELECT
+            numero,
+            MAX(timestamp) AS ultima_fecha,
+            (SELECT mensaje
+               FROM conversaciones
+              WHERE numero = t.numero
+              ORDER BY timestamp DESC
+              LIMIT 1
+            ) AS ultimo_mensaje
+          FROM conversaciones t
+          GROUP BY numero
+        ) AS c
+          ON c.numero = cm.numero
 
+        -- link al avatar y plataforma usando tu columna correcta
         LEFT JOIN contactos cont
-          ON cont.numero = cm.numero
+          ON cont.numero_telefono = cm.numero
 
-        -- contamos mensajes sin respuesta
+        -- contamos cuántos mensajes sin respuesta quedan
         LEFT JOIN (
           SELECT numero, COUNT(*) AS cnt
             FROM conversaciones
@@ -699,6 +702,7 @@ def ver_kanban():
         ORDER BY c.ultima_fecha DESC;
     """)
     chats = cursor.fetchall()
+
     cursor.close()
     conn.close()
 
