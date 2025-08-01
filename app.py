@@ -654,27 +654,32 @@ def ver_kanban():
     conn   = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
-    # 1) Traemos las columnas (etapas), en orden
+    # 1) Traemos las columnas Kanban
     cursor.execute("SELECT * FROM kanban_columnas ORDER BY id;")
     columnas = cursor.fetchall()
 
-    # 2) Traemos todos los chats con su última fecha y etapa actual
+    # 2) Para cada chat, traemos su etapa, última fecha y último mensaje
     cursor.execute("""
-      SELECT m.numero,
-             MAX(c.timestamp) AS ultima_fecha,
-             cm.columna_id,
-             c2.mensaje AS ultimo_mensaje
+        SELECT
+          cm.numero,
+          cm.columna_id,
+          -- Subconsulta para el timestamp más reciente
+          (SELECT timestamp 
+             FROM conversaciones 
+            WHERE numero = cm.numero 
+            ORDER BY timestamp DESC 
+            LIMIT 1
+          ) AS ultima_fecha,
+          -- Subconsulta para el texto del último mensaje
+          (SELECT mensaje 
+             FROM conversaciones 
+            WHERE numero = cm.numero 
+            ORDER BY timestamp DESC 
+            LIMIT 1
+          ) AS ultimo_mensaje
         FROM chat_meta cm
-        JOIN conversaciones c    ON c.numero = cm.numero
-        JOIN conversaciones c2   ON c2.numero = cm.numero AND c2.timestamp = (
-            SELECT MAX(timestamp)
-            FROM conversaciones
-            WHERE numero = cm.numero
-        )
-       GROUP BY m.numero, cm.columna_id
-       ORDER BY ultima_fecha DESC;
+        ORDER BY ultima_fecha DESC;
     """)
-    # Nota: si no tienes tabla 'm', reemplaza el alias por cm.numero directamente
     chats = cursor.fetchall()
 
     cursor.close()
@@ -683,6 +688,7 @@ def ver_kanban():
         columnas=columnas,
         chats=chats
     )
+
 @app.route('/kanban/mover', methods=['POST'])
 def kanban_mover():
     data = request.get_json()
