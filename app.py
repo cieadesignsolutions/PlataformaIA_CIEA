@@ -764,12 +764,12 @@ def kanban_mover():
 @app.route('/privacy-policy')
 def privacy_policy():
     return render_template('privacy_policy.html')
+    
 @app.route('/data-deletion')
-
 def data_deletion():
     return render_template('data_deletion.html')
+    
 @app.route('/terms-of-service')
-
 def terms_of_service():
     return render_template('terms_of_service.html')
     
