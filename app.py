@@ -33,6 +33,41 @@ ALERT_NUMBER   = os.getenv("ALERT_NUMBER", "524491182201")
 client = OpenAI(api_key=OPENAI_API_KEY)
 IA_ESTADOS = {}
 
+# ——— Función auxiliar para descargar y guardar el avatar ———
+def fetch_and_save_avatar(numero):
+    """
+    Llama a Graph API para obtener profile_pic_url de WhatsApp y
+    lo inserta o actualiza en la tabla contactos.
+    """
+    url = f"https://graph.facebook.com/v17.0/{numero}"
+    params = {'fields': 'profile_pic_url'}
+    headers = {'Authorization': f'Bearer {WHATSAPP_TOKEN}'}
+    try:
+        r = requests.get(url, params=params, headers=headers, timeout=5)
+        r.raise_for_status()
+        data = r.json()
+        pic = data.get('profile_pic_url')
+    except Exception:
+        pic = None
+
+    conn   = get_db_connection()
+    cursor = conn.cursor()
+    if pic:
+        cursor.execute("""
+            INSERT INTO contactos (numero_telefono, imagen_url, plataforma)
+            VALUES (%s, %s, 'whatsapp')
+            ON DUPLICATE KEY UPDATE imagen_url = VALUES(imagen_url);
+        """, (numero, pic))
+    else:
+        cursor.execute("""
+            INSERT IGNORE INTO contactos (numero_telefono, imagen_url, plataforma)
+            VALUES (%s, '/static/icons/default-avatar.png', 'whatsapp');
+        """, (numero,))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    
+
 # ——— Subpestañas válidas ———
 SUBTABS = ['negocio', 'personalizacion', 'precios']
 
@@ -397,6 +432,9 @@ def recibir_mensaje():
 
         msg    = mensajes[0]
         numero = msg['from']
+                ### ← Aquí justo, antes de leer el cuerpo del mensaje…
+        fetch_and_save_avatar(numero)
+
         texto  = msg['text']['body']
 
         if numero == MI_NUMERO_BOT:
