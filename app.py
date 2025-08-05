@@ -271,7 +271,8 @@ Mantén siempre un tono profesional y conciso.
 
 # ——— Envío WhatsApp y guardado de conversación ———
 def enviar_mensaje(numero, texto):
-    url     = f"https://graph.facebook.com/v17.0/{MI_NUMERO_BOT}/messages"
+    PHONE_NUMBER_ID = MI_NUMERO_BOT  # asegúrate de que sea tu Phone Number ID
+    url     = f"https://graph.facebook.com/v23.0/{PHONE_NUMBER_ID}/messages"
     headers = {
         'Authorization': f'Bearer {WHATSAPP_TOKEN}',
         'Content-Type': 'application/json'
@@ -282,11 +283,17 @@ def enviar_mensaje(numero, texto):
         'type': 'text',
         'text': {'body': texto}
     }
+
+    app.logger.info("➡️ [WA SEND] URL: %s", url)
+    app.logger.info("➡️ [WA SEND] HEADERS: %s", headers)
+    app.logger.info("➡️ [WA SEND] PAYLOAD: %s", payload)
     try:
-        r = requests.post(url, headers=headers, json=payload)
-        app.logger.info(f"📤 WhatsApp API: {r.status_code} {r.text}")
+        r = requests.post(url, headers=headers, json=payload, timeout=10)
+        app.logger.info("⬅️ [WA SEND] STATUS: %s", r.status_code)
+        app.logger.info("⬅️ [WA SEND] RESPONSE: %s", r.text)
     except Exception as e:
-        app.logger.error(f"🔴 Error enviando WhatsApp: {e}")
+        app.logger.error("🔴 [WA SEND] EXCEPTION: %s", e)
+
 
 def guardar_conversacion(numero, mensaje, respuesta):
     conn   = get_db_connection()
