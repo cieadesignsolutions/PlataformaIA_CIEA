@@ -18,7 +18,11 @@
       {% for chat in chats %}
       <a href="/chats/{{ chat.numero }}" class="chat-item {% if selected == chat.numero %}selected{% endif %}">
         <div class="chat-avatar">
-          <img src="https://cdn-icons-png.flaticon.com/512/747/747376.png" alt="Avatar">
+          <img 
+            src="{{ chat.imagen_url or url_for('static', filename='icons/default-avatar.png') }}" 
+            alt="Avatar"
+            onerror="this.onerror=null;this.src='{{ url_for('static', filename='icons/default-avatar.png') }}';"
+            width="40" height="40">
         </div>
         <div class="chat-info">
           <div class="chat-name">{{ chat.numero }}</div>
