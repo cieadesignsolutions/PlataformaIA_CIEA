@@ -36,18 +36,19 @@ IA_ESTADOS = {}
 # ——— Función auxiliar para descargar y guardar el avatar ———
 def fetch_and_save_avatar(numero):
     """
-    Llama a Graph API para obtener profile_pic_url de WhatsApp y
+    Llama a Graph API para obtener profile_pic de WhatsApp y
     lo inserta o actualiza en la tabla contactos.
     """
-    url = f"https://graph.facebook.com/v17.0/{numero}"
-    params = {'fields': 'profile_pic_url'}
+    url = f"https://graph.facebook.com/v19.0/{numero}"
+    params = {'fields': 'profile_pic'}
     headers = {'Authorization': f'Bearer {WHATSAPP_TOKEN}'}
     try:
         r = requests.get(url, params=params, headers=headers, timeout=5)
         r.raise_for_status()
         data = r.json()
-        pic = data.get('profile_pic_url')
-    except Exception:
+        pic = data.get('profile_pic')
+    except Exception as e:
+        app.logger.error(f"Error obteniendo avatar de {numero}: {e}")
         pic = None
 
     conn   = get_db_connection()
@@ -66,7 +67,7 @@ def fetch_and_save_avatar(numero):
     conn.commit()
     cursor.close()
     conn.close()
-    
+
 
 # ——— Subpestañas válidas ———
 SUBTABS = ['negocio', 'personalizacion', 'precios']
@@ -528,10 +529,17 @@ def home():
 def ver_chats():
     conn   = get_db_connection()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute(
-        "SELECT numero, MAX(timestamp) AS ultima "
-        "FROM conversaciones GROUP BY numero ORDER BY ultima DESC;"
-    )
+    cursor.execute("""
+        SELECT
+          c.numero,
+          MAX(c.timestamp) AS ultima_fecha,
+          cont.imagen_url,
+          (SELECT mensaje FROM conversaciones cc WHERE cc.numero = c.numero ORDER BY cc.timestamp DESC LIMIT 1) AS ultimo_mensaje
+        FROM conversaciones c
+        LEFT JOIN contactos cont ON cont.numero_telefono = c.numero
+        GROUP BY c.numero
+        ORDER BY ultima_fecha DESC;
+    """)
     chats = cursor.fetchall()
     cursor.close()
     conn.close()
@@ -555,10 +563,17 @@ def ver_chat(numero):
         if msg.get('timestamp'):
             msg['timestamp'] = msg['timestamp'].replace(tzinfo=pytz.UTC).astimezone(tz_mx)
 
-    cursor.execute(
-        "SELECT numero, MAX(timestamp) AS ultima "
-        "FROM conversaciones GROUP BY numero ORDER BY ultima DESC;"
-    )
+    cursor.execute("""
+        SELECT
+          c.numero,
+          MAX(c.timestamp) AS ultima_fecha,
+          cont.imagen_url,
+          (SELECT mensaje FROM conversaciones cc WHERE cc.numero = c.numero ORDER BY cc.timestamp DESC LIMIT 1) AS ultimo_mensaje
+        FROM conversaciones c
+        LEFT JOIN contactos cont ON cont.numero_telefono = c.numero
+        GROUP BY c.numero
+        ORDER BY ultima_fecha DESC;
+    """)
     chats = cursor.fetchall()
     cursor.close()
     conn.close()
@@ -566,7 +581,7 @@ def ver_chat(numero):
         chats=chats, mensajes=msgs,
         selected=numero, IA_ESTADOS=IA_ESTADOS
     )
-
+    
 @app.route('/toggle_ai/<numero>', methods=['POST'])
 def toggle_ai(numero):
     IA_ESTADOS[numero] = not IA_ESTADOS.get(numero, True)
