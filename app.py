@@ -46,7 +46,9 @@ def fetch_and_save_avatar(numero):
         r = requests.get(url, params=params, headers=headers, timeout=5)
         r.raise_for_status()
         data = r.json()
+        app.logger.info(f"[Avatar] Respuesta de la API para {numero}: {data}")
         pic = data.get('profile_pic')
+        app.logger.info(f"[Avatar] URL obtenida para {numero}: {pic}")
     except Exception as e:
         app.logger.error(f"Error obteniendo avatar de {numero}: {e}")
         pic = None
