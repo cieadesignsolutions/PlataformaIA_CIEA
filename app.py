@@ -36,19 +36,18 @@ IA_ESTADOS = {}
 # ——— Función auxiliar para descargar y guardar el avatar ———
 def fetch_and_save_avatar(numero):
     """
-    Llama a Graph API para obtener profile_pic de WhatsApp y
+    Llama a Graph API para obtener profile_pic_url de WhatsApp y
     lo inserta o actualiza en la tabla contactos.
     """
-    url = f"https://graph.facebook.com/v19.0/{numero}"
-    params = {'fields': 'profile_pic'}
+    url = f"https://graph.facebook.com/v17.0/{numero}"
+    params = {'fields': 'profile_pic_url'}
     headers = {'Authorization': f'Bearer {WHATSAPP_TOKEN}'}
     try:
         r = requests.get(url, params=params, headers=headers, timeout=5)
         r.raise_for_status()
         data = r.json()
-        pic = data.get('profile_pic')
-    except Exception as e:
-        app.logger.error(f"Error obteniendo avatar de {numero}: {e}")
+        pic = data.get('profile_pic_url')
+    except Exception:
         pic = None
 
     conn   = get_db_connection()
@@ -67,7 +66,7 @@ def fetch_and_save_avatar(numero):
     conn.commit()
     cursor.close()
     conn.close()
-
+    
 
 # ——— Subpestañas válidas ———
 SUBTABS = ['negocio', 'personalizacion', 'precios']
