@@ -134,44 +134,48 @@
 </div>
 
 <script>
-  // Alias inline editing (chats list y header)
-  function activarEdicionAlias(parent) {
-    parent.querySelector('.alias-view').style.display = 'none';
-    parent.querySelector('.alias-edit').style.display = '';
-    const input = parent.querySelector('input[type=text]');
-    input.focus();
-    input.select();
+  // Solo activa la edición para el alias de ese chat específico
+  document.addEventListener('DOMContentLoaded', function () {
+    // Editar alias en lista de chats
+    document.querySelectorAll('.edit-alias-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Busca solo dentro del contenedor chat-name correspondiente
+        const parent = btn.closest('.chat-name, .chat-panel-header');
+        parent.querySelector('.alias-view').style.display = 'none';
+        parent.querySelector('.alias-edit').style.display = '';
+        const input = parent.querySelector('input[type=text]');
+        input.focus();
+        input.select();
 
-    function terminarEdicion() {
-      fetch(`/contactos/${input.dataset.num}/alias`, {
-        method: 'POST',
-        body: new URLSearchParams({alias: input.value}),
-        headers: {'Content-Type':'application/x-www-form-urlencoded'}
-      }).then(() => {
-        parent.querySelector('.alias-edit').style.display = 'none';
-        parent.querySelector('.alias-view').textContent = input.value || input.dataset.num;
-        parent.querySelector('.alias-view').style.display = '';
+        function terminarEdicion() {
+          fetch(`/contactos/${input.dataset.num}/alias`, {
+            method: 'POST',
+            body: new URLSearchParams({alias: input.value}),
+            headers: {'Content-Type':'application/x-www-form-urlencoded'}
+          }).then(() => {
+            parent.querySelector('.alias-edit').style.display = 'none';
+            // Actualiza SOLO el alias-view de este chat
+            parent.querySelector('.alias-view').textContent = input.value || input.dataset.num;
+            parent.querySelector('.alias-view').style.display = '';
+          });
+        }
+
+        // Actualiza solo en blur o Enter
+        input.onblur = terminarEdicion;
+        input.onkeydown = function(e) {
+          if (e.key === 'Enter') terminarEdicion();
+          if (e.key === 'Escape') {
+            parent.querySelector('.alias-edit').style.display = 'none';
+            parent.querySelector('.alias-view').style.display = '';
+          }
+        };
       });
-    }
-
-    input.onblur = terminarEdicion;
-    input.onkeydown = function(e) {
-      if (e.key === 'Enter') { terminarEdicion(); }
-      if (e.key === 'Escape') {
-        parent.querySelector('.alias-edit').style.display = 'none';
-        parent.querySelector('.alias-view').style.display = '';
-      }
-    };
-  }
-
-  document.querySelectorAll('.edit-alias-btn').forEach(btn => {
-    btn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      activarEdicionAlias(this.parentNode);
     });
   });
 
-  // Scroll to bottom messages
+  // Scroll al fondo de los mensajes
   const msgs = document.getElementById('msgs');
   if (msgs) {
     msgs.scrollTop = msgs.scrollHeight;
