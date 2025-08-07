@@ -3,6 +3,8 @@ import pytz
 import os
 import logging
 import requests
+from flask import Flask
+import re
 import mysql.connector
 from flask import (
     Flask, request, render_template,
@@ -32,6 +34,48 @@ ALERT_NUMBER   = os.getenv("ALERT_NUMBER", "524491182201")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 IA_ESTADOS = {}
+
+
+# Diccionario de prefijos a código de país (solo algunos ejemplos, puedes ampliar)
+PREFIJOS_PAIS = {
+    '52': 'mx',  # México
+    '1': 'us',   # USA y Canadá
+    '54': 'ar',  # Argentina
+    '57': 'co',  # Colombia
+    '55': 'br',  # Brasil
+    '34': 'es',  # España
+    '51': 'pe',  # Perú
+    '56': 'cl',  # Chile
+    '58': 've',  # Venezuela
+    '593': 'ec', # Ecuador
+    '591': 'bo', # Bolivia
+    '507': 'pa', # Panamá
+    '502': 'gt', # Guatemala
+    # ... agrega los que necesites
+}
+
+def get_country_flag(numero):
+    """
+    Devuelve el código de país a partir del número (formato internacional) y la url de bandera.
+    """
+    if not numero:
+        return None
+    numero = str(numero)
+    # Quita signo "+" si lo trae
+    if numero.startswith('+'):
+        numero = numero[1:]
+    # Encuentra prefijo (máximo 3 dígitos)
+    for i in range(3, 0, -1):
+        prefijo = numero[:i]
+        if prefijo in PREFIJOS_PAIS:
+            codigo = PREFIJOS_PAIS[prefijo]
+            # Usamos flagcdn.com para traer banderas SVG de 24px de alto
+            return f"https://flagcdn.com/24x18/{codigo}.png"
+    return None
+
+# Registrar como filtro Jinja
+
+app.jinja_env.filters['bandera'] = get_country_flag
 
 # ——— Función auxiliar para descargar y guardar el avatar ———
 def fetch_and_save_avatar(numero):
