@@ -30,22 +30,22 @@
           {% endif %}
         </div>
         <div class="card-body">
-          <strong>
+          <strong style="display: flex; align-items: center;">
             <span class="alias-view" data-num="{{ chat.numero }}">
               {{ chat.alias or chat.nombre or chat.numero }}
             </span>
             <span class="alias-edit" style="display:none;">
-              <input type="text" value="{{ chat.alias or chat.nombre or chat.numero }}" data-num="{{ chat.numero }}" maxlength="100" style="width: 110px;">
+              <input type="text" value="{{ chat.alias or chat.nombre or '' }}" data-num="{{ chat.numero }}" maxlength="100" style="width: 110px;">
             </span>
             <button type="button" class="edit-alias-btn" data-num="{{ chat.numero }}" title="Editar nombre" style="border:none;background:none;cursor:pointer;">
               ✏️
             </button>
           </strong>
-          <div class="card-num" style="font-size:11px;color:#888;">
-            {% if chat.alias or chat.nombre %}
+          {% if chat.alias or chat.nombre %}
+            <div class="card-num" style="font-size:11px;color:#888;">
               {{ chat.numero }}
-            {% endif %}
-          </div>
+            </div>
+          {% endif %}
           <small class="card-msg">{{ chat.ultimo_mensaje }}</small>
         </div>
         <div class="card-footer">
@@ -104,8 +104,8 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // --- Edición de alias (nombre o alias editable con ✏️) ---
-  document.querySelectorAll('.edit-alias-btn').forEach(btn => {
+  // Alias inline editing para Kanban
+  document.querySelectorAll('.kanban-card .edit-alias-btn').forEach(btn => {
     btn.addEventListener('click', function(e) {
       e.stopPropagation();
       const parent = this.parentNode;
@@ -126,6 +126,7 @@ window.addEventListener('DOMContentLoaded', () => {
           parent.querySelector('.alias-view').style.display = '';
         });
       }
+
       input.onblur = terminarEdicion;
       input.onkeydown = function(e) {
         if (e.key === 'Enter') { terminarEdicion(); }
