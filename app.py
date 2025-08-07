@@ -553,6 +553,7 @@ def ver_chats():
           c.numero,
           MAX(c.timestamp) AS ultima_fecha,
           cont.imagen_url,
+          COALESCE(NULLIF(cont.nombre_generico,''), cont.nombre, '') AS nombre_mostrar,
           (SELECT mensaje FROM conversaciones cc WHERE cc.numero = c.numero ORDER BY cc.timestamp DESC LIMIT 1) AS ultimo_mensaje
         FROM conversaciones c
         LEFT JOIN contactos cont ON cont.numero_telefono = c.numero
@@ -566,6 +567,7 @@ def ver_chats():
         chats=chats, mensajes=None,
         selected=None, IA_ESTADOS=IA_ESTADOS
     )
+
 
 @app.route('/chats/<numero>')
 def ver_chat(numero):
@@ -587,6 +589,7 @@ def ver_chat(numero):
           c.numero,
           MAX(c.timestamp) AS ultima_fecha,
           cont.imagen_url,
+          COALESCE(NULLIF(cont.nombre_generico,''), cont.nombre, '') AS nombre_mostrar,
           (SELECT mensaje FROM conversaciones cc WHERE cc.numero = c.numero ORDER BY cc.timestamp DESC LIMIT 1) AS ultimo_mensaje
         FROM conversaciones c
         LEFT JOIN contactos cont ON cont.numero_telefono = c.numero

@@ -25,7 +25,13 @@
             width="40" height="40">
         </div>
         <div class="chat-info">
-          <div class="chat-name">{{ chat.numero }}</div>
+          <div class="chat-name">
+            {% if chat.nombre_mostrar %}
+              {{ chat.nombre_mostrar }} <span style="color:#bbb;font-size:0.9em;">({{ chat.numero }})</span>
+            {% else %}
+              {{ chat.numero }}
+            {% endif %}
+          </div>
           <div class="chat-preview">
             {% if chat.ultimo_mensaje %}
               {{ chat.ultimo_mensaje[:35] }}...
@@ -47,7 +53,16 @@
   <!-- Centro: Mensajes -->
   <section class="chat-panel-v2">
     <div class="chat-panel-header">
-      {% if selected %}Chat con {{ selected }}{% else %}Selecciona un chat{% endif %}
+      {% if selected %}
+        {% set chat_sel = (chats | selectattr('numero', 'equalto', selected) | list)[0] %}
+        {% if chat_sel.nombre_mostrar %}
+          {{ chat_sel.nombre_mostrar }} <span style="color:#bbb;">({{ selected }})</span>
+        {% else %}
+          Chat con {{ selected }}
+        {% endif %}
+      {% else %}
+        Selecciona un chat
+      {% endif %}
     </div>
 
     <div class="msgs-wrap-v2" id="msgs">
