@@ -101,24 +101,15 @@
 .card-title-row {
   display: flex;
   align-items: center;
+  width: 100%;
+  min-width: 0;
   gap: 6px;
-  font-size: 1.05em;
+  font-size: 0.96em;           /* MÁS PEQUEÑO */
   font-weight: 500;
   color: #fff;
   margin-bottom: 2px;
-  white-space: nowrap;           /* <-- Nunca se parte en 2 líneas */
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 92%;
 }
-.card-title-row .alias-view {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 120px;     /* Ajusta este valor si tienes columnas más anchas */
-  display: inline-block;
-  vertical-align: middle;
-}
+
 .card-flag {
   width: 18px;
   height: 14px;
@@ -129,15 +120,31 @@
   box-shadow: 0 0 2px #0002;
   border: 1px solid #ddd;
 }
+
+.card-title-row .alias-view {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  vertical-align: middle;
+  font-size: 1em;
+  font-weight: 500;
+}
+
 .card-title-row .edit-alias-btn {
-  font-size: 0.96em;
+  flex-shrink: 0;
+  margin-left: 8px;
+  margin-right: 0;
+  font-size: 1em;
   color: #f7b731;
   background: none;
   border: none;
   cursor: pointer;
-  opacity: 0.8;
-  margin-left: 2px;
+  opacity: 0.83;
   transition: color 0.15s, opacity 0.15s;
+  align-self: flex-start;
 }
 .card-title-row .edit-alias-btn:hover { color: #ff9800; opacity:1; }
 
