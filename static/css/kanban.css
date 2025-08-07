@@ -106,6 +106,18 @@
   font-weight: 500;
   color: #fff;
   margin-bottom: 2px;
+  white-space: nowrap;           /* <-- Nunca se parte en 2 líneas */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 92%;
+}
+.card-title-row .alias-view {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;     /* Ajusta este valor si tienes columnas más anchas */
+  display: inline-block;
+  vertical-align: middle;
 }
 .card-flag {
   width: 18px;
