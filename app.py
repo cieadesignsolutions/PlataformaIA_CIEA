@@ -740,7 +740,7 @@ def ver_kanban():
     cursor.execute("SELECT * FROM kanban_columnas ORDER BY id;")
     columnas = cursor.fetchall()
 
-    # 2) Cargamos los chats con avatar, canal, última fecha, último mensaje y sin leer
+    # 2) Cargamos los chats con avatar, canal, nombre personalizado o nombre WA
     cursor.execute("""
         SELECT
           cm.numero,
@@ -749,6 +749,7 @@ def ver_kanban():
           c.ultimo_mensaje,
           cont.imagen_url    AS avatar,
           cont.plataforma    AS canal,
+          COALESCE(NULLIF(cont.nombre_generico,''), cont.nombre, '') AS nombre_mostrar,
           IFNULL(unread.cnt, 0) AS sin_leer
         FROM chat_meta cm
 
@@ -768,7 +769,7 @@ def ver_kanban():
         ) AS c
           ON c.numero = cm.numero
 
-        -- link al avatar y plataforma usando tu columna correcta
+        -- link al avatar, nombre y plataforma
         LEFT JOIN contactos cont
           ON cont.numero_telefono = cm.numero
 
