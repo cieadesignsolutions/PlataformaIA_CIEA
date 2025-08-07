@@ -439,6 +439,23 @@ def recibir_mensaje():
         mensajes = change.get('messages')
         if not mensajes:
             return 'OK', 200
+        
+        # --- ACTUALIZA nombre y crea contacto si no existe ---
+        contactos = change.get('contacts')
+        if contactos and len(contactos) > 0:
+            profile_name = contactos[0].get('profile', {}).get('name')
+            wa_id = contactos[0].get('wa_id')
+            if profile_name and wa_id:
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO contactos (numero_telefono, nombre, plataforma)
+                    VALUES (%s, %s, 'whatsapp')
+                    ON DUPLICATE KEY UPDATE nombre = VALUES(nombre);
+                """, (wa_id, profile_name))
+                conn.commit()
+                cursor.close()
+                conn.close()
 
         msg    = mensajes[0]
         numero = msg['from']
