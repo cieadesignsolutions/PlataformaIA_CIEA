@@ -409,7 +409,7 @@ def enviar_template_alerta(nombre, numero_cliente, mensaje_clave, resumen):
     }
     try:
         r = requests.post(
-            f"https://graph.facebook.com/v17.0/{MI_NUMERO_BOT}/messages",
+            f"https://graph.facebook.com/v19.0/{MI_NUMERO_BOT}/messages",
             headers={'Authorization':f'Bearer {WHATSAPP_TOKEN}','Content-Type':'application/json'},
             json=payload
         )
