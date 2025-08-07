@@ -61,35 +61,35 @@
 /* Tarjeta Kanban moderna */
 .kanban-card {
   display: flex;
-  align-items: center;
-  background: rgba(34, 40, 49, 0.88);
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
-  padding: 12px 18px 12px 14px;
+  align-items: flex-start;
+  background: rgba(34, 40, 49, 0.90);
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.13);
+  padding: 10px 14px 10px 11px;
   margin-bottom: 12px;
-  min-height: 66px;
-  cursor: grab;
-  transition: box-shadow 0.2s, background 0.2s;
+  min-height: 60px;
   position: relative;
+  cursor: grab;
+  transition: box-shadow 0.18s, background 0.18s;
 }
 .kanban-card:active {
   cursor: grabbing;
   background: rgba(40, 46, 60, 1);
-  box-shadow: 0 6px 30px rgba(0,0,0,0.18);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.18);
 }
 .card-avatar-section {
-  margin-right: 14px;
+  margin-right: 11px;
   display: flex;
   align-items: center;
 }
 .card-avatar {
-  width: 50px;
-  height: 50px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   object-fit: cover;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   background: #fff;
-  border: 2.5px solid #222839;
+  border: 2px solid #222839;
+  box-shadow: 0 2px 7px rgba(0,0,0,0.11);
 }
 .card-content {
   flex: 1;
@@ -101,78 +101,79 @@
 .card-title-row {
   display: flex;
   align-items: center;
-  gap: 7px;
-  font-size: 1.13em;
-  font-weight: 600;
+  gap: 6px;
+  font-size: 1.05em;
+  font-weight: 500;
   color: #fff;
+  margin-bottom: 2px;
 }
 .card-flag {
-  width: 22px;
-  height: 17px;
-  border-radius: 4px;
-  margin-right: 8px;
+  width: 18px;
+  height: 14px;
+  border-radius: 3px;
+  margin-right: 5px;
   vertical-align: middle;
   object-fit: cover;
-  box-shadow: 0 0 3px #0002;
+  box-shadow: 0 0 2px #0002;
   border: 1px solid #ddd;
 }
 .card-title-row .edit-alias-btn {
-  font-size: 1em;
+  font-size: 0.96em;
   color: #f7b731;
   background: none;
   border: none;
   cursor: pointer;
-  opacity: 0.83;
+  opacity: 0.8;
   margin-left: 2px;
   transition: color 0.15s, opacity 0.15s;
 }
 .card-title-row .edit-alias-btn:hover { color: #ff9800; opacity:1; }
-.card-num {
-  font-size: 0.97em;
-  color: #b6bac5;
-  margin-bottom: 2px;
-  margin-top: -2px;
-}
-.card-bottom-row {
+
+.card-meta-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 1px;
-  min-width: 0;
-  gap: 8px;
+  margin-bottom: 2px;
+}
+.card-num {
+  color: #b6bac5;
+  font-size: 0.90em;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  margin-right: 12px;
+}
+.card-time {
+  color: #b7b9c6;
+  font-size: 0.91em;
+  min-width: 68px;
+  text-align: right;
+  font-weight: 400;
 }
 .card-msg {
   color: #e2e5ed;
-  font-size: 1.01em;
+  font-size: 0.98em;
   font-weight: 400;
-  max-width: 73%;
+  max-width: 90%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   letter-spacing: 0.01em;
-}
-.card-meta {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.card-time {
-  color: #b7b9c6;
-  font-size: 0.97em;
-  min-width: 41px;
-  text-align: right;
+  margin-top: 3px;
 }
 .card-unread {
+  position: absolute;
+  top: 10px;
+  right: 12px;
   background: #00E091;
   color: #fff;
   border-radius: 10px;
-  padding: 1.5px 8px;
-  font-size: 0.93em;
+  padding: 0.5px 8px;
+  font-size: 0.89em;
   font-weight: 600;
-  margin-left: 2px;
   min-width: 19px;
   text-align: center;
   box-shadow: 0 0 5px #00e09144;
+  z-index: 2;
 }
 .alias-edit input[type="text"] {
   font-size: 1em;
