@@ -553,7 +553,8 @@ def ver_chats():
           c.numero,
           MAX(c.timestamp) AS ultima_fecha,
           cont.imagen_url,
-          COALESCE(NULLIF(cont.nombre_generico,''), cont.nombre, '') AS nombre_mostrar,
+          cont.alias,
+          cont.nombre,
           (SELECT mensaje FROM conversaciones cc WHERE cc.numero = c.numero ORDER BY cc.timestamp DESC LIMIT 1) AS ultimo_mensaje
         FROM conversaciones c
         LEFT JOIN contactos cont ON cont.numero_telefono = c.numero
@@ -817,6 +818,21 @@ def data_deletion():
 @app.route('/terms-of-service')
 def terms_of_service():
     return render_template('terms_of_service.html')
+
+@app.route('/contactos/<numero>/alias', methods=['POST'])
+def actualizar_alias(numero):
+    nuevo_alias = request.form.get('alias', '').strip()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE contactos SET alias=%s WHERE numero_telefono=%s;",
+        (nuevo_alias, numero)
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return '', 204  # Sin respuesta, porque es AJAX
+
     
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

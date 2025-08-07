@@ -25,12 +25,16 @@
             width="40" height="40">
         </div>
         <div class="chat-info">
-          <div class="chat-name">
-            {% if chat.nombre_mostrar %}
-              {{ chat.nombre_mostrar }} <span style="color:#bbb;font-size:0.9em;">({{ chat.numero }})</span>
-            {% else %}
-              {{ chat.numero }}
-            {% endif %}
+          <div class="chat-name" data-num="{{ chat.numero }}">
+            <span class="alias-view">
+              {{ chat.alias or chat.nombre or chat.numero }}
+            </span>
+            <span class="alias-edit" style="display:none;">
+              <input type="text" value="{{ chat.alias or chat.nombre or chat.numero }}" data-num="{{ chat.numero }}" maxlength="100" style="width: 110px;">
+            </span>
+            <button type="button" class="edit-alias-btn" data-num="{{ chat.numero }}" title="Editar nombre" style="border:none;background:none;cursor:pointer;">
+              ✏️
+            </button>
           </div>
           <div class="chat-preview">
             {% if chat.ultimo_mensaje %}
@@ -52,14 +56,22 @@
 
   <!-- Centro: Mensajes -->
   <section class="chat-panel-v2">
-    <div class="chat-panel-header">
+    <div class="chat-panel-header" data-num="{{ selected }}">
       {% if selected %}
-        {% set chat_sel = (chats | selectattr('numero', 'equalto', selected) | list)[0] %}
-        {% if chat_sel.nombre_mostrar %}
-          {{ chat_sel.nombre_mostrar }} <span style="color:#bbb;">({{ selected }})</span>
-        {% else %}
-          Chat con {{ selected }}
-        {% endif %}
+        <span class="alias-view">
+          {{ (chats | selectattr("numero", "equalto", selected) | first).alias
+            or (chats | selectattr("numero", "equalto", selected) | first).nombre
+            or selected }}
+        </span>
+        <span class="alias-edit" style="display:none;">
+          <input type="text" value="{{ (chats | selectattr("numero", "equalto", selected) | first).alias
+            or (chats | selectattr("numero", "equalto", selected) | first).nombre
+            or selected }}" data-num="{{ selected }}" maxlength="100" style="width: 110px;">
+        </span>
+        <button type="button" class="edit-alias-btn" data-num="{{ selected }}" title="Editar nombre" style="border:none;background:none;cursor:pointer;">
+          ✏️
+        </button>
+        <span style="margin-left:8px; color:#888;">{{ selected }}</span>
       {% else %}
         Selecciona un chat
       {% endif %}
@@ -117,6 +129,43 @@
 </div>
 
 <script>
+  // Alias inline editing (chats list y header)
+  function activarEdicionAlias(parent) {
+    parent.querySelector('.alias-view').style.display = 'none';
+    parent.querySelector('.alias-edit').style.display = '';
+    const input = parent.querySelector('input[type=text]');
+    input.focus();
+    input.select();
+
+    function terminarEdicion() {
+      fetch(`/contactos/${input.dataset.num}/alias`, {
+        method: 'POST',
+        body: new URLSearchParams({alias: input.value}),
+        headers: {'Content-Type':'application/x-www-form-urlencoded'}
+      }).then(() => {
+        parent.querySelector('.alias-edit').style.display = 'none';
+        parent.querySelector('.alias-view').textContent = input.value || input.dataset.num;
+        parent.querySelector('.alias-view').style.display = '';
+      });
+    }
+
+    input.onblur = terminarEdicion;
+    input.onkeydown = function(e) {
+      if (e.key === 'Enter') { terminarEdicion(); }
+      if (e.key === 'Escape') {
+        parent.querySelector('.alias-edit').style.display = 'none';
+        parent.querySelector('.alias-view').style.display = '';
+      }
+    };
+  }
+
+  document.querySelectorAll('.edit-alias-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      activarEdicionAlias(this.parentNode);
+    });
+  });
+
+  // Scroll to bottom messages
   const msgs = document.getElementById('msgs');
   if (msgs) {
     msgs.scrollTop = msgs.scrollHeight;
