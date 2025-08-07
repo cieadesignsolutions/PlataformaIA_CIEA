@@ -16,7 +16,11 @@
       {% for chat in chats if chat.columna_id == col.id %}
       <div class="kanban-card" data-chat-num="{{ chat.numero }}">
         <div class="card-top">
-          <img src="{{ chat.avatar or url_for('static', filename='icons/default-avatar.png') }}" class="card-avatar" alt="Avatar">
+          <img 
+            src="{{ chat.avatar or url_for('static', filename='icons/default-avatar.png') }}" 
+            class="card-avatar" alt="Avatar"
+            onerror="this.onerror=null;this.src='{{ url_for('static', filename='icons/default-avatar.png') }}';"
+          >
           {% if chat.canal == 'whatsapp' %}
             <img src="{{ url_for('static', filename='icons/whatsapp.png') }}" class="card-canal" title="WhatsApp" alt="WA">
           {% elif chat.canal == 'facebook' %}
@@ -26,11 +30,26 @@
           {% endif %}
         </div>
         <div class="card-body">
-          <strong>{{ chat.numero }}</strong>
+          <strong>
+            {% if chat.nombre_mostrar %}
+              {{ chat.nombre_mostrar }}
+            {% else %}
+              {{ chat.numero }}
+            {% endif %}
+          </strong>
+          <div class="card-num" style="font-size:11px;color:#888;">
+            {% if chat.nombre_mostrar %}
+              {{ chat.numero }}
+            {% endif %}
+          </div>
           <small class="card-msg">{{ chat.ultimo_mensaje }}</small>
         </div>
         <div class="card-footer">
-          <small class="card-time">{{ chat.ultima_fecha.strftime('%Y-%m-%d %H:%M') }}</small>
+          <small class="card-time">
+            {% if chat.ultima_fecha %}
+              {{ chat.ultima_fecha.strftime('%Y-%m-%d %H:%M') }}
+            {% endif %}
+          </small>
           {% if chat.sin_leer > 0 %}
           <span class="card-unread">{{ chat.sin_leer }}</span>
           {% endif %}
