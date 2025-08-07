@@ -137,17 +137,24 @@
 }
 .card-num {
   color: #b6bac5;
-  font-size: 0.90em;
+  font-size: 0.79em;
   font-weight: 400;
   letter-spacing: 0.01em;
-  margin-right: 12px;
+  margin-right: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 62%;
 }
 .card-time {
   color: #b7b9c6;
-  font-size: 0.91em;
-  min-width: 68px;
+  font-size: 0.79em;
+  min-width: 64px;
   text-align: right;
   font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .card-msg {
   color: #e2e5ed;
