@@ -70,13 +70,16 @@
   min-height: 60px;
   position: relative;
   cursor: grab;
-  transition: box-shadow 0.18s, background 0.18s;
+  transition: box-shadow 0.18s, background 0.18s, border-color 0.15s;
+  border: 2.8px solid #353951;  /* <--- NUEVO BORDE más grueso, color sutil tipo GL */
 }
 .kanban-card:active {
   cursor: grabbing;
   background: rgba(40, 46, 60, 1);
   box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+  border-color: #467cff;       /* Azul más visible al arrastrar */
 }
+
 .card-avatar-section {
   margin-right: 11px;
   display: flex;
