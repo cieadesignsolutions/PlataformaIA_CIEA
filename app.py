@@ -574,23 +574,14 @@ def ver_chats():
 def ver_chat(numero):
     conn   = get_db_connection()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute(
-        "SELECT * FROM conversaciones WHERE numero=%s ORDER BY timestamp ASC;",
-        (numero,)
-    )
-    msgs = cursor.fetchall()
-
-    # ✅ Convertir a zona horaria de México (solo si hay timestamp)
-    for msg in msgs:
-        if msg.get('timestamp'):
-            msg['timestamp'] = msg['timestamp'].replace(tzinfo=pytz.UTC).astimezone(tz_mx)
-
+    # 1. Traer TODOS los chats para la lista de la izquierda (con alias y nombre)
     cursor.execute("""
         SELECT
           c.numero,
           MAX(c.timestamp) AS ultima_fecha,
           cont.imagen_url,
-          COALESCE(NULLIF(cont.nombre_generico,''), cont.nombre, '') AS nombre_mostrar,
+          cont.nombre,
+          cont.alias,
           (SELECT mensaje FROM conversaciones cc WHERE cc.numero = c.numero ORDER BY cc.timestamp DESC LIMIT 1) AS ultimo_mensaje
         FROM conversaciones c
         LEFT JOIN contactos cont ON cont.numero_telefono = c.numero
@@ -598,6 +589,19 @@ def ver_chat(numero):
         ORDER BY ultima_fecha DESC;
     """)
     chats = cursor.fetchall()
+
+    # 2. Traer todos los mensajes de este chat
+    cursor.execute(
+        "SELECT * FROM conversaciones WHERE numero=%s ORDER BY timestamp ASC;",
+        (numero,)
+    )
+    msgs = cursor.fetchall()
+
+    # 3. Horario local
+    for msg in msgs:
+        if msg.get('timestamp'):
+            msg['timestamp'] = msg['timestamp'].replace(tzinfo=pytz.UTC).astimezone(tz_mx)
+
     cursor.close()
     conn.close()
     return render_template('chats.html',
