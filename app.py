@@ -820,18 +820,18 @@ def terms_of_service():
     return render_template('terms_of_service.html')
 
 @app.route('/contactos/<numero>/alias', methods=['POST'])
-def actualizar_alias(numero):
-    nuevo_alias = request.form.get('alias', '').strip()
+def guardar_alias_contacto(numero):
+    alias = request.form.get('alias','').strip()
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "UPDATE contactos SET alias=%s WHERE numero_telefono=%s;",
-        (nuevo_alias, numero)
+        "UPDATE contactos SET alias=%s WHERE numero_telefono=%s",
+        (alias if alias else None, numero)
     )
     conn.commit()
     cursor.close()
     conn.close()
-    return '', 204  # Sin respuesta, porque es AJAX
+    return '', 204
 
     
 if __name__ == '__main__':
