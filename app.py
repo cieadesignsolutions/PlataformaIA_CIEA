@@ -95,7 +95,7 @@ def db_connection():
 
 def fetch_and_save_avatar(numero):
     """
-    Scrapea WhatsApp Web para obtener el avatar real del contacto,
+    Scrapea WhatsApp Web para obtener el avatar del contacto,
     lo guarda en static/avatars/{numero}.png y actualiza imagen_url
     y avatar_actualizado_en en la tabla contactos.
     """
@@ -104,40 +104,59 @@ def fetch_and_save_avatar(numero):
     AVATAR_DIR.mkdir(parents=True, exist_ok=True)
     local_path = AVATAR_DIR / f"{numero}.png"
 
-    def descargar_imagen(img_url, destino):
-        r = requests.get(img_url, timeout=10)
+    def download_image(url, dest):
+        r = requests.get(url, timeout=10)
         r.raise_for_status()
-        with open(destino, "wb") as f:
+        with open(dest, "wb") as f:
             f.write(r.content)
 
-    def extraer_avatar(page, numero):
-        # 1) Buscar contacto
+    def extract_avatar(page, numero):
+        # 1) Buscar el chat
         search = page.locator('div[title="Buscar o empezar un chat nuevo"]')
-        ...
-        return img.get_attribute("src")
+        search.click()
+        search.fill(numero)
+        page.wait_for_timeout(2000)
 
-    # Ejecutar Playwright
+        # 2) Abrir el chat
+        chat = page.locator(f'text="{numero}"').first
+        chat.click()
+        page.wait_for_timeout(2000)
+
+        # 3) Abrir información de contacto
+        page.locator('header').locator('button').nth(2).click()
+        page.wait_for_timeout(2000)
+
+        # 4) Capturar URL del avatar
+        avatar_elem = page.locator('img[alt="avatar"]')
+        return avatar_elem.get_attribute("src")
+
+    # ——— Playwright: arrancar y extraer URL ———
     try:
         with sync_playwright() as p:
-            ...
-            avatar_url = extraer_avatar(page, numero)
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context(storage_state=f"{SESSION_DIR}/state.json")
+            page = context.new_page()
+            page.goto("https://web.whatsapp.com/")
+            page.wait_for_timeout(6000)
+            avatar_url = extract_avatar(page, numero)
             browser.close()
     except Exception as e:
         app.logger.error(f"❌ Playwright error para {numero}: {e}")
         return
 
+    # ——— Validar URL ———
     if not avatar_url or avatar_url.startswith("blob:"):
-        app.logger.warning(f"⚠️ URL inválida para avatar de {numero}")
+        app.logger.warning(f"⚠️ URL inválida para avatar de {numero}: {avatar_url}")
         return
 
-    # Descargar y guardar localmente
+    # ——— Descargar imagen localmente ———
     try:
-        descargar_imagen(avatar_url, local_path)
+        download_image(avatar_url, local_path)
     except Exception as e:
         app.logger.error(f"❌ Error descargando imagen de {numero}: {e}")
         return
 
-    # Actualizar en la base de datos
+    # ——— Actualizar en la base de datos ———
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -153,8 +172,6 @@ def fetch_and_save_avatar(numero):
         app.logger.info(f"✅ Avatar guardado y DB actualizada para {numero}")
     except Exception as e:
         app.logger.error(f"❌ Error actualizando DB para {numero}: {e}")
-
-
 
 def necesita_avatar(numero):
     conn = get_db_connection()
