@@ -85,6 +85,63 @@ app.jinja_env.filters['bandera'] = get_country_flag
 
 # ——— Función auxiliar para descargar y guardar el avatar ———
 
+# ——— Función para descargar avatar vía WhatsApp Web con Playwright ———
+def fetch_and_save_avatar(numero):
+    SESSION_DIR = "whatsapp_session"
+
+    def guardar_avatar_en_db(numero, base64_avatar):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        # guardamos la imagen en base64, o podrías guardarla en disco si prefieres
+        img_data = f"data:image/png;base64,{base64_avatar}"
+        cursor.execute(
+            """
+            INSERT INTO contactos (numero_telefono, imagen_url, plataforma, avatar_actualizado_en)
+            VALUES (%s, %s, 'whatsapp', NOW())
+            ON DUPLICATE KEY UPDATE
+              imagen_url = VALUES(imagen_url),
+              avatar_actualizado_en = VALUES(avatar_actualizado_en);
+            """,
+            (numero, img_data)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+    def buscar_contacto_y_obtener_avatar(page, numero):
+        try:
+            # abre la búsqueda de chats y busca por número
+            page.locator('div[title="Buscar o empezar un chat nuevo"]').click()
+            page.locator('div[title="Buscar o empezar un chat nuevo"]').fill(numero)
+            page.wait_for_timeout(2000)
+            page.locator(f'text="{numero}"').first.click()
+            page.wait_for_timeout(2000)
+            # abre el panel de perfil
+            page.locator('header').locator('button').nth(2).click()
+            page.wait_for_timeout(2000)
+            # toma la URL de la imagen
+            img = page.locator('img[alt="avatar"]')
+            src = img.get_attribute("src")
+            if src and not src.startswith("blob:"):
+                resp = requests.get(src)
+                return base64.b64encode(resp.content).decode()
+        except Exception as e:
+            app.logger.error(f"❌ Playwright error para {numero}: {e}")
+        return None
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context(storage_state=f"{SESSION_DIR}/state.json")
+        page = context.new_page()
+        page.goto("https://web.whatsapp.com/")
+        page.wait_for_timeout(5000)
+        avatar_b64 = buscar_contacto_y_obtener_avatar(page, numero)
+        if avatar_b64:
+            guardar_avatar_en_db(numero, avatar_b64)
+        browser.close()
+
+
+
 def db_connection():
     return mysql.connector.connect(
         host=os.getenv("DB_HOST", "localhost"),
@@ -93,85 +150,7 @@ def db_connection():
         database=os.getenv("DB_NAME", "PlataformaIA_CIEA_DB")
     )
 
-def fetch_and_save_avatar(numero):
-    """
-    Scrapea WhatsApp Web para obtener el avatar del contacto,
-    lo guarda en static/avatars/{numero}.png y actualiza imagen_url
-    y avatar_actualizado_en en la tabla contactos.
-    """
-    SESSION_DIR = "whatsapp_session"
-    AVATAR_DIR  = Path("static/avatars")
-    AVATAR_DIR.mkdir(parents=True, exist_ok=True)
-    local_path = AVATAR_DIR / f"{numero}.png"
 
-    def download_image(url, dest):
-        r = requests.get(url, timeout=10)
-        r.raise_for_status()
-        with open(dest, "wb") as f:
-            f.write(r.content)
-
-    def extract_avatar(page, numero):
-        # 1) Buscar el chat
-        search = page.locator('div[title="Buscar o empezar un chat nuevo"]')
-        search.click()
-        search.fill(numero)
-        page.wait_for_timeout(2000)
-
-        # 2) Abrir el chat
-        chat = page.locator(f'text="{numero}"').first
-        chat.click()
-        page.wait_for_timeout(2000)
-
-        # 3) Abrir información de contacto
-        page.locator('header').locator('button').nth(2).click()
-        page.wait_for_timeout(2000)
-
-        # 4) Capturar URL del avatar
-        avatar_elem = page.locator('img[alt="avatar"]')
-        return avatar_elem.get_attribute("src")
-
-    # ——— Playwright: arrancar y extraer URL ———
-    try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            context = browser.new_context(storage_state=f"{SESSION_DIR}/state.json")
-            page = context.new_page()
-            page.goto("https://web.whatsapp.com/")
-            page.wait_for_timeout(6000)
-            avatar_url = extract_avatar(page, numero)
-            browser.close()
-    except Exception as e:
-        app.logger.error(f"❌ Playwright error para {numero}: {e}")
-        return
-
-    # ——— Validar URL ———
-    if not avatar_url or avatar_url.startswith("blob:"):
-        app.logger.warning(f"⚠️ URL inválida para avatar de {numero}: {avatar_url}")
-        return
-
-    # ——— Descargar imagen localmente ———
-    try:
-        download_image(avatar_url, local_path)
-    except Exception as e:
-        app.logger.error(f"❌ Error descargando imagen de {numero}: {e}")
-        return
-
-    # ——— Actualizar en la base de datos ———
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE contactos
-               SET imagen_url = %s,
-                   avatar_actualizado_en = %s
-             WHERE numero_telefono = %s;
-        """, (f"/static/avatars/{numero}.png", datetime.utcnow(), numero))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        app.logger.info(f"✅ Avatar guardado y DB actualizada para {numero}")
-    except Exception as e:
-        app.logger.error(f"❌ Error actualizando DB para {numero}: {e}")
 
 def necesita_avatar(numero):
     conn = get_db_connection()
