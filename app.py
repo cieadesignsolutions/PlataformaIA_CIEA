@@ -122,62 +122,56 @@ app.jinja_env.filters['bandera'] = get_country_flag
 # ——— Función auxiliar para descargar y guardar el avatar ———
 
 # ——— Función para descargar avatar vía WhatsApp Web con Playwright ———
-def fetch_and_save_avatar(numero):
-    """
-    Obtiene la URL del profile_pic_url vía Graph API y la descarga,
-    luego guarda la imagen en disco y actualiza la DB.
-    """
-    # 1) Llamada al endpoint de contactos
-    url = f"https://graph.facebook.com/v19.0/{MI_NUMERO_BOT}/contacts"
-    params = {
-        'access_token': WHATSAPP_TOKEN,
-        'contacts': json.dumps([numero]),
-        'fields': 'profile_pic_url'
-    }
+import mysql.connector
+import requests
+import os
+
+def fetch_and_save_avatar_api(wa_id):
+    """Obtiene la imagen de perfil de un contacto desde la API de WhatsApp y la guarda en la DB."""
     try:
-        resp = requests.get(url, params=params, timeout=10)
-        resp.raise_for_status()
-        data = resp.json()
-        pic_url = data['contacts'][0].get('profile_pic_url')
-    except Exception as e:
-        app.logger.error(f"🔴 Error GraphAPI avatar {numero}: {e}")
-        return
+        token = os.getenv("WHATSAPP_TOKEN")  # Tu token en Render u Oracle VM
+        phone_number_id = os.getenv("PHONE_NUMBER_ID")  # ID de número de WhatsApp
 
-    if not pic_url:
-        app.logger.warning(f"⚠️ No hay profile_pic_url para {numero}")
-        return
+        # Llamada a la API de WhatsApp para obtener info del perfil
+        url = f"https://graph.facebook.com/v21.0/{wa_id}"
+        params = {"fields": "profile_pic"}
+        headers = {"Authorization": f"Bearer {token}"}
 
-    # 2) Descarga la imagen
-    try:
-        img_resp = requests.get(pic_url, timeout=10)
-        img_resp.raise_for_status()
-    except Exception as e:
-        app.logger.error(f"🔴 Error descargando avatar {numero}: {e}")
-        return
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        data = response.json()
 
-    # 3) Guárdala en disco (opcional) y en DB
-    #    Aquí la guardamos como base64 inline en la columna imagen_url
-    b64 = base64.b64encode(img_resp.content).decode()
-    img_data = f"data:image/png;base64,{b64}"
+        image_url = data.get("profile_pic", None)
+        if not image_url:
+            print(f"No se encontró imagen de perfil para {wa_id}")
+            return None
 
-    try:
-        conn = get_db_connection()
+        # Guardar en la DB
+        conn = mysql.connector.connect(
+            host=os.getenv("MYSQL_HOST"),
+            user=os.getenv("MYSQL_USER"),
+            password=os.getenv("MYSQL_PASSWORD"),
+            database=os.getenv("MYSQL_DATABASE")
+        )
         cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE contactos
-               SET imagen_url = %s,
-                   avatar_actualizado_en = %s
-             WHERE numero_telefono = %s;
-        """, (img_data, datetime.utcnow(), numero))
+
+        sql = """
+        UPDATE contactos
+        SET image_url = %s
+        WHERE wa_id = %s
+        """
+        cursor.execute(sql, (image_url, wa_id))
         conn.commit()
-    except Exception as e:
-        app.logger.error(f"🔴 Error actualizando DB avatar {numero}: {e}")
-    finally:
+
         cursor.close()
         conn.close()
 
-    app.logger.info(f"✅ Avatar GraphAPI guardado para {numero}")
+        print(f"Imagen de perfil guardada para {wa_id}: {image_url}")
+        return image_url
 
+    except Exception as e:
+        print(f"Error al obtener/guardar imagen de perfil: {e}")
+        return None
 
 def db_connection():
     return mysql.connector.connect(
@@ -477,44 +471,7 @@ def detectar_intervencion_humana(mensaje_usuario, respuesta_ia):
             return True
     return False
 
-def resumen_rafa(numero):
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute(
-        "SELECT mensaje, respuesta FROM conversaciones "
-        "WHERE numero=%s ORDER BY timestamp DESC LIMIT 10;",
-        (numero,)
-    )
-    rows = cursor.fetchall()
-    cursor.close()
-    conn.close()
 
-    partes = []
-    for row in reversed(rows):
-        partes.append(f"Usuario: {row['mensaje']}")
-        if row['respuesta']:
-            partes.append(f"IA: {row['respuesta']}")
-    conversa = "\n".join(partes)
-
-    system = """
-Eres un asistente que crea resúmenes estilo RAFA: muy completos pero concisos, 
-capturando los puntos clave en un solo párrafo.
-""".strip()
-    user_prompt = f"Resumen de la siguiente conversación:\n\n{conversa}"
-    try:
-        resp = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user",   "content": user_prompt}
-            ],
-            temperature=0.5,
-            max_tokens=300
-        )
-        return resp.choices[0].message.content.strip()
-    except Exception as e:
-        app.logger.error(f"🔴 Error generando resumen RAFA: {e}")
-        return "El cliente solicitó atención personalizada."
 
 def enviar_template_alerta(nombre, numero_cliente, mensaje_clave, resumen):
     def sanitizar(texto):
