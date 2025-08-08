@@ -4,6 +4,7 @@ import os
 import logging
 import requests
 # --- Avatar desde WhatsApp Web ---
+import json
 import base64
 from playwright.sync_api import sync_playwright
 from pathlib import Path
@@ -59,6 +60,41 @@ PREFIJOS_PAIS = {
     '502': 'gt', # Guatemala
     # ... agrega los que necesites
 }
+def descargar_media_y_guardar_en_db(media_id, numero):
+    """
+    Descarga la media con Graph API y actualiza contactos.imagen_url y avatar_actualizado_en.
+    """
+    # 1) Obtén la URL de descarga
+    url_meta = f"https://graph.facebook.com/v23.0/{media_id}"
+    params   = {'fields':'url','access_token': WHATSAPP_TOKEN}
+    r_meta = requests.get(url_meta, params=params, timeout=10)
+    r_meta.raise_for_status()
+    media_url = r_meta.json().get('url')
+
+    # 2) Descarga el contenido binario
+    r_bin = requests.get(media_url, headers={'Authorization':f'Bearer {WHATSAPP_TOKEN}'}, timeout=10)
+    r_bin.raise_for_status()
+    content = r_bin.content
+
+    # 3) Guarda en disco (opcional) y arma el data-URL
+    import base64
+    b64 = base64.b64encode(content).decode()
+    data_url = f"data:image/jpeg;base64,{b64}"
+
+    # 4) Guarda en la base
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE contactos
+           SET imagen_url = %s,
+               avatar_actualizado_en = %s
+         WHERE numero_telefono = %s;
+    """, (data_url, datetime.utcnow(), numero))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    app.logger.info(f"✅ Avatar guardado para {numero}")
+
 
 def get_country_flag(numero):
     """
@@ -552,9 +588,27 @@ def recibir_mensaje():
                 cursor.close()
                 conn.close()
 
-            msg    = mensajes[0]
-            numero = msg['from']
-            texto  = msg['text']['body']
+         # --- ACTUALIZA nombre y crea contacto si no existe ---
+         contactos = change.get('contacts')
+         # … (tu código de insertar contacto) …
+
+-        msg    = mensajes[0]
+-        numero = msg['from']
+-        texto  = msg['text']['body']
++        msg    = mensajes[0]
++        numero = msg['from']
++
++        # 1) ¿Es una imagen?
++        if msg.get('type') == 'image':
++            media_id = msg['image']['id']
++            app.logger.info(f"🖼️ Image received from {numero}, id {media_id}")
++            # Llama a tu función que descarga la media y la guarda en la DB
++            descargar_media_y_guardar_en_db(media_id, numero)
++            return 'OK', 200
++
++        # 2) Si no es imagen, entonces asume texto
++        texto  = msg['text']['body']
+
 
             if necesita_avatar(numero):
                 try:
