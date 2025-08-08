@@ -3,6 +3,12 @@ import pytz
 import os
 import logging
 import requests
+# --- Avatar desde WhatsApp Web ---
+import base64
+from playwright.sync_api import sync_playwright
+from pathlib import Path
+# --- -------------------
+
 from flask import Flask
 import re
 import mysql.connector
@@ -78,42 +84,90 @@ def get_country_flag(numero):
 app.jinja_env.filters['bandera'] = get_country_flag
 
 # ——— Función auxiliar para descargar y guardar el avatar ———
+
+def db_connection():
+    return mysql.connector.connect(
+        host=os.getenv("DB_HOST", "localhost"),
+        user=os.getenv("DB_USER", "root"),
+        password=os.getenv("DB_PASSWORD", "admin"),
+        database=os.getenv("DB_NAME", "PlataformaIA_CIEA_DB")
+    )
+
 def fetch_and_save_avatar(numero):
     """
-    Llama a Graph API para obtener profile_pic de WhatsApp y
-    lo inserta o actualiza en la tabla contactos.
+    Scrapea WhatsApp Web para obtener el avatar real del contacto,
+    lo guarda en static/avatars/{numero}.png y actualiza imagen_url
+    y avatar_actualizado_en en la tabla contactos.
     """
-    url = f"https://graph.facebook.com/v19.0/{numero}"
-    params = {'fields': 'profile_pic'}
-    headers = {'Authorization': f'Bearer {WHATSAPP_TOKEN}'}
-    try:
-        r = requests.get(url, params=params, headers=headers, timeout=5)
-        r.raise_for_status()
-        data = r.json()
-        app.logger.info(f"[Avatar] Respuesta de la API para {numero}: {data}")
-        pic = data.get('profile_pic')
-        app.logger.info(f"[Avatar] URL obtenida para {numero}: {pic}")
-    except Exception as e:
-        app.logger.error(f"Error obteniendo avatar de {numero}: {e}")
-        pic = None
+    SESSION_DIR = "whatsapp_session"
+    AVATAR_DIR  = Path("static/avatars")
+    AVATAR_DIR.mkdir(parents=True, exist_ok=True)
+    local_path = AVATAR_DIR / f"{numero}.png"
 
-    conn   = get_db_connection()
+    def descargar_imagen(img_url, destino):
+        r = requests.get(img_url, timeout=10)
+        r.raise_for_status()
+        with open(destino, "wb") as f:
+            f.write(r.content)
+
+    def extraer_avatar(page, numero):
+        # 1) Buscar contacto
+        search = page.locator('div[title="Buscar o empezar un chat nuevo"]')
+        ...
+        return img.get_attribute("src")
+
+    # Ejecutar Playwright
+    try:
+        with sync_playwright() as p:
+            ...
+            avatar_url = extraer_avatar(page, numero)
+            browser.close()
+    except Exception as e:
+        app.logger.error(f"❌ Playwright error para {numero}: {e}")
+        return
+
+    if not avatar_url or avatar_url.startswith("blob:"):
+        app.logger.warning(f"⚠️ URL inválida para avatar de {numero}")
+        return
+
+    # Descargar y guardar localmente
+    try:
+        descargar_imagen(avatar_url, local_path)
+    except Exception as e:
+        app.logger.error(f"❌ Error descargando imagen de {numero}: {e}")
+        return
+
+    # Actualizar en la base de datos
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE contactos
+               SET imagen_url = %s,
+                   avatar_actualizado_en = %s
+             WHERE numero_telefono = %s;
+        """, (f"/static/avatars/{numero}.png", datetime.utcnow(), numero))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        app.logger.info(f"✅ Avatar guardado y DB actualizada para {numero}")
+    except Exception as e:
+        app.logger.error(f"❌ Error actualizando DB para {numero}: {e}")
+
+
+
+def necesita_avatar(numero):
+    conn = get_db_connection()
     cursor = conn.cursor()
-    if pic:
-        cursor.execute("""
-            INSERT INTO contactos (numero_telefono, imagen_url, plataforma)
-            VALUES (%s, %s, 'whatsapp')
-            ON DUPLICATE KEY UPDATE imagen_url = VALUES(imagen_url);
-        """, (numero, pic))
-    else:
-        cursor.execute("""
-            INSERT IGNORE INTO contactos (numero_telefono, imagen_url, plataforma)
-            VALUES (%s, '/static/icons/default-avatar.png', 'whatsapp');
-        """, (numero,))
-    conn.commit()
+    cursor.execute("SELECT imagen_url FROM contactos WHERE numero_telefono = %s;", (numero,))
+    resultado = cursor.fetchone()
     cursor.close()
     conn.close()
 
+    if resultado:
+        imagen = resultado[0]
+        return not imagen or imagen.strip() == '' or 'default-avatar.png' in imagen
+    return True
 
 # ——— Subpestañas válidas ———
 SUBTABS = ['negocio', 'personalizacion', 'precios']
@@ -501,12 +555,18 @@ def recibir_mensaje():
                 cursor.close()
                 conn.close()
 
-        msg    = mensajes[0]
-        numero = msg['from']
-                ### ← Aquí justo, antes de leer el cuerpo del mensaje…
-        fetch_and_save_avatar(numero)
+            msg    = mensajes[0]
+            numero = msg['from']
+            texto  = msg['text']['body']
 
-        texto  = msg['text']['body']
+            if necesita_avatar(numero):
+                try:
+                    app.logger.info(f"🖼️ Descargando avatar de {numero}...")
+                    fetch_and_save_avatar(numero)
+                    app.logger.info(f"✅ Avatar de {numero} guardado correctamente.")
+                except Exception as e:
+                    app.logger.error(f"❌ Error al descargar avatar de {numero}: {e}")
+
 
         if numero == MI_NUMERO_BOT:
             return 'OK', 200
@@ -882,6 +942,5 @@ def guardar_alias_contacto(numero):
     conn.close()
     return '', 204
 
-    
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
