@@ -87,59 +87,60 @@ app.jinja_env.filters['bandera'] = get_country_flag
 
 # ——— Función para descargar avatar vía WhatsApp Web con Playwright ———
 def fetch_and_save_avatar(numero):
-    SESSION_DIR = "whatsapp_session"
+    """
+    Obtiene la URL del profile_pic_url vía Graph API y la descarga,
+    luego guarda la imagen en disco y actualiza la DB.
+    """
+    # 1) Llamada al endpoint de contactos
+    url = f"https://graph.facebook.com/v19.0/{MI_NUMERO_BOT}/contacts"
+    params = {
+        'access_token': WHATSAPP_TOKEN,
+        'contacts': json.dumps([numero]),
+        'fields': 'profile_pic_url'
+    }
+    try:
+        resp = requests.get(url, params=params, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        pic_url = data['contacts'][0].get('profile_pic_url')
+    except Exception as e:
+        app.logger.error(f"🔴 Error GraphAPI avatar {numero}: {e}")
+        return
 
-    def guardar_avatar_en_db(numero, base64_avatar):
+    if not pic_url:
+        app.logger.warning(f"⚠️ No hay profile_pic_url para {numero}")
+        return
+
+    # 2) Descarga la imagen
+    try:
+        img_resp = requests.get(pic_url, timeout=10)
+        img_resp.raise_for_status()
+    except Exception as e:
+        app.logger.error(f"🔴 Error descargando avatar {numero}: {e}")
+        return
+
+    # 3) Guárdala en disco (opcional) y en DB
+    #    Aquí la guardamos como base64 inline en la columna imagen_url
+    b64 = base64.b64encode(img_resp.content).decode()
+    img_data = f"data:image/png;base64,{b64}"
+
+    try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        # guardamos la imagen en base64, o podrías guardarla en disco si prefieres
-        img_data = f"data:image/png;base64,{base64_avatar}"
-        cursor.execute(
-            """
-            INSERT INTO contactos (numero_telefono, imagen_url, plataforma, avatar_actualizado_en)
-            VALUES (%s, %s, 'whatsapp', NOW())
-            ON DUPLICATE KEY UPDATE
-              imagen_url = VALUES(imagen_url),
-              avatar_actualizado_en = VALUES(avatar_actualizado_en);
-            """,
-            (numero, img_data)
-        )
+        cursor.execute("""
+            UPDATE contactos
+               SET imagen_url = %s,
+                   avatar_actualizado_en = %s
+             WHERE numero_telefono = %s;
+        """, (img_data, datetime.utcnow(), numero))
         conn.commit()
+    except Exception as e:
+        app.logger.error(f"🔴 Error actualizando DB avatar {numero}: {e}")
+    finally:
         cursor.close()
         conn.close()
 
-    def buscar_contacto_y_obtener_avatar(page, numero):
-        try:
-            # abre la búsqueda de chats y busca por número
-            page.locator('div[title="Buscar o empezar un chat nuevo"]').click()
-            page.locator('div[title="Buscar o empezar un chat nuevo"]').fill(numero)
-            page.wait_for_timeout(2000)
-            page.locator(f'text="{numero}"').first.click()
-            page.wait_for_timeout(2000)
-            # abre el panel de perfil
-            page.locator('header').locator('button').nth(2).click()
-            page.wait_for_timeout(2000)
-            # toma la URL de la imagen
-            img = page.locator('img[alt="avatar"]')
-            src = img.get_attribute("src")
-            if src and not src.startswith("blob:"):
-                resp = requests.get(src)
-                return base64.b64encode(resp.content).decode()
-        except Exception as e:
-            app.logger.error(f"❌ Playwright error para {numero}: {e}")
-        return None
-
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(storage_state=f"{SESSION_DIR}/state.json")
-        page = context.new_page()
-        page.goto("https://web.whatsapp.com/")
-        page.wait_for_timeout(5000)
-        avatar_b64 = buscar_contacto_y_obtener_avatar(page, numero)
-        if avatar_b64:
-            guardar_avatar_en_db(numero, avatar_b64)
-        browser.close()
-
+    app.logger.info(f"✅ Avatar GraphAPI guardado para {numero}")
 
 
 def db_connection():
