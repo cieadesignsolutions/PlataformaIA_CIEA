@@ -571,7 +571,7 @@ def recibir_mensaje():
         if not mensajes:
             return 'OK', 200
 
-        # — Actualiza nombre y crea contacto si no existe —
+        # ——— ACTUALIZA nombre y crea contacto si no existe ———
         contactos = change.get('contacts')
         if contactos and len(contactos) > 0:
             profile_name = contactos[0].get('profile', {}).get('name')
@@ -588,37 +588,27 @@ def recibir_mensaje():
                 cursor.close()
                 conn.close()
 
-        # — Primer mensaje del payload —
         msg    = mensajes[0]
         numero = msg['from']
+        texto  = msg.get('text', {}).get('body', '')
 
-        # — Descarga avatar si hace falta —
+        # ——— SI NO TENEMOS AVATAR, LO DESCARGAMOS ———
         if necesita_avatar(numero):
             try:
-                app.logger.info(f"🖼️ Descargando avatar de {numero}...")
+                app.logger.info(f"🖼️ Descargando avatar de {numero}…")
                 fetch_and_save_avatar(numero)
                 app.logger.info(f"✅ Avatar de {numero} guardado correctamente.")
             except Exception as e:
                 app.logger.error(f"❌ Error al descargar avatar de {numero}: {e}")
 
-        # — Ignora mensajes de tu propio bot —
+        # Ignorar mensajes de nuestro propio bot
         if numero == MI_NUMERO_BOT:
             return 'OK', 200
 
-        # — 1) Manejo de imágenes —
-        if msg.get('type') == 'image':
-            media_id = msg['image']['id']
-            app.logger.info(f"🖼️ Image received from {numero}, id {media_id}")
-            descargar_media_y_guardar_en_db(media_id, numero)
-            return 'OK', 200
-
-        # — 2) Manejo de texto —
-        texto = msg['text']['body']
-
-        # — Comando precio de … —
+        # ——— Consultas de precio ———
         if texto.lower().startswith('precio de '):
             servicio = texto[10:].strip()
-            info     = obtener_precio(servicio)
+            info = obtener_precio(servicio)
             if info:
                 precio, moneda = info
                 respuesta = f"El precio de *{servicio}* es {precio} {moneda}."
@@ -628,7 +618,7 @@ def recibir_mensaje():
             guardar_conversacion(numero, texto, respuesta)
             return 'OK', 200
 
-        # — Flujo de IA normal —
+        # ——— IA normal ———
         IA_ESTADOS.setdefault(numero, True)
         respuesta = ""
         if IA_ESTADOS[numero]:
